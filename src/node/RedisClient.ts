@@ -123,7 +123,7 @@ export class RedisClient {
     return noResponse ? void 0 : call.response.promise;
   }
 
-  public async cmd(args: unknown[], opts?: Pick<RedisCall, 'utf8Res' | 'noRes'>): Promise<unknown> {
+  public async cmd(args: unknown[], opts?: CmdOpts): Promise<unknown> {
     const call = new RedisCall(args);
     if (opts) {
       if (opts.utf8Res) call.utf8Res = true;
@@ -150,3 +150,5 @@ export class RedisClient {
     return this.cmd(['CLUSTER', 'SHARDS'], {utf8Res: true}) as Promise<RedisClusterShardsResponse>;
   }
 }
+
+export type CmdOpts = Partial<Pick<RedisCall, 'utf8Res' | 'noRes'>>;

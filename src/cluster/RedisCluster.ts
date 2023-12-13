@@ -3,10 +3,14 @@ import * as tls from 'tls';
 import {FanOut} from 'thingies/es2020/fanout';
 import {RespEncoder} from 'json-joy/es2020/json-pack/resp';
 import {RespStreamingDecoder} from 'json-joy/es2020/json-pack/resp/RespStreamingDecoder';
+import * as commands from '../generated/commands';
 import {PartialExcept, RedisClientCodecOpts} from '../types';
-import {RedisClient, ReconnectingSocket} from '../node';
+import {RedisClient, ReconnectingSocket, CmdOpts} from '../node';
 import {RedisClusterRouter} from './RedisClusterRouter';
 import {RedisClusterNodeInfo} from './RedisClusterNodeInfo';
+import {RedisClusterCall} from './RedisClusterCall';
+
+const calculateSlot = require('cluster-key-slot');
 
 export interface RedisClusterOpts extends RedisClientCodecOpts {
   /** Nodes to connect to to retrieve cluster configuration. */
@@ -71,7 +75,7 @@ export class RedisCluster {
       await this.router.rebuild(client);
       if (this.stopped) return;
       this.initialTableBuildAttempt = 0;
-      console.log(this.router);
+      console.log('SHARD TABLE CREATED');
       this.onRouter.emit();
     })().catch((error) => {
       const delay = Math.max(Math.min(1000 * 2 ** attempt, 1000 * 60), 1000);
@@ -96,22 +100,29 @@ export class RedisCluster {
     return randomClient;
   }
 
+  protected async getBestAvailableWriteClient(slot: number): Promise<RedisClient> {
+    await this.whenRouterReady();
+    const router = this.router;
+    const info = router.getMasterForSlot(slot);
+    if (!info) return this.getAnyClient();
+    const client = router.getClient(info.id);
+    if (client) return client;
+    this.createClientForSlot(info);
+    return this.getAnyClient();
+  }
+
   protected async getBestAvailableReadClient(slot: number): Promise<RedisClient> {
     await this.whenRouterReady();
     const router = this.router;
     const info = router.getRandomNodeForSlot(slot);
-    if (!info) {
-      const client = router.getRandomClient();
-      if (!client) throw new Error('NO_CLIENT');
-      return client;
-    }
+    if (!info) return this.getAnyClient();
     const client = router.getClient(info.id);
     if (client) return client;
-    this.createReadClientForSlot(info);
+    this.createClientForSlot(info);
     return this.getAnyClient();
   }
 
-  private async createReadClientForSlot(info: RedisClusterNodeInfo): Promise<RedisClient> {
+  private async createClientForSlot(info: RedisClusterNodeInfo): Promise<RedisClient> {
     const client = await this.createClient({
       ...this.opts.connectionConfig,
       host: info.endpoint,
@@ -148,5 +159,31 @@ export class RedisCluster {
       decoder: this.decoder,
     });
     return client;
+  }
+
+  public async getClientForKey(key: string, master: boolean): Promise<RedisClient> {
+    if (!key) return this.getAnyClient();
+    const slot = calculateSlot(key);
+    return master ? this.getBestAvailableWriteClient(slot) : this.getBestAvailableReadClient(slot);
+  }
+
+  public async call(call: RedisClusterCall): Promise<unknown> {
+    const args = call.args;
+    let cmd: string = args[0] as string;
+    if (typeof cmd !== 'string') throw new Error('INVALID_COMMAND');
+    cmd = cmd.toUpperCase();
+    const isWrite = commands.write.has(cmd);
+    const key = call.key || (args[1] + '') || '';
+    const client = await this.getClientForKey(key, isWrite);
+    return await client.call(call);
+  }
+
+  public async cmd(args: unknown[], opts?: CmdOpts): Promise<unknown> {
+    const call = new RedisClusterCall(args);
+    if (opts) {
+      if (opts.utf8Res) call.utf8Res = true;
+      if (opts.noRes) call.noRes = true;
+    }
+    return this.call(call);
   }
 }

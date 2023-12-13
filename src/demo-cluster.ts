@@ -24,6 +24,19 @@ const main = async () => {
   });
 
   client.start();
+
+  const exec = async (args: unknown[]) => {
+    try {
+      const res = await client.cmd(args);
+      console.log('->', args);
+      console.log('<-', res);
+    } catch (error) {
+      console.log('->', args);
+      console.error('<-', error);
+    }
+  };
+
+  await exec(['SET', 'foo', 'bar']);
 };
 
 main().catch((err) => {
