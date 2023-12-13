@@ -3,7 +3,9 @@
 import {RedisCluster} from "./cluster/RedisCluster";
 
 const main = async () => {
-  const host = 'localhost';
+  // const host = 'localhost';
+  const host = '127.0.0.1';
+  // const host = '172.17.0.2';
   const port = 7000;
   const user = 'default';
   const pwd = 'AoQhB7bNYljT8IiZ7nbgvSQSXiGHRwQX';
@@ -37,6 +39,7 @@ const main = async () => {
   };
 
   await exec(['SET', 'foo', 'bar']);
+  // await exec(['GET', 'foo']);
 };
 
 main().catch((err) => {

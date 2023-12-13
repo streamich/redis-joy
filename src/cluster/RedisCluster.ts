@@ -60,7 +60,6 @@ export class RedisCluster {
       await this.router.rebuild(client);
       if (this.stopped) return;
       this.initialTableBuildAttempt = 0;
-      console.log('SHARD TABLE CREATED');
       this.onRouter.emit();
     })().catch((error) => {
       const delay = Math.max(Math.min(1000 * 2 ** attempt, 1000 * 60), 1000);
@@ -108,15 +107,18 @@ export class RedisCluster {
   }
 
   private async createClientFromInfo(info: RedisClusterNodeInfo): Promise<RedisClusterNodeClient> {
-    const [client] = await this.createClient({
-      ...this.opts.connectionConfig,
-      host: info.endpoint || info.ip,
-      port: info.port,
-    });
-    return client;
+    return this.createClientForHost(info.endpoint || info.ip, info.port);
   }
 
-  protected async createClient(config: RedisClusterNodeClientOpts): Promise<[client: RedisClusterNodeClient, id: string]> {
+  private async createClientForHost(host: string, port: number): Promise<RedisClusterNodeClient> {
+    return this.createClient({
+      ...this.opts.connectionConfig,
+      host,
+      port,
+    });
+  }
+
+  protected async createClient(config: RedisClusterNodeClientOpts): Promise<RedisClusterNodeClient> {
     const client = this.createClientRaw(config);
     client.start();
     const {user, pwd} = config;
@@ -124,8 +126,9 @@ export class RedisCluster {
       client.hello(3, pwd, user),
       client.clusterMyId(),
     ]);
+    client.id = id;
     this.router.setClient(id, client);
-    return [client, id];
+    return client;
   }
 
   protected createClientRaw(config: RedisClusterNodeClientOpts): RedisClusterNodeClient {
@@ -154,7 +157,13 @@ export class RedisCluster {
         const redirect = parseMovedError((error as Error).message);
         let host = redirect[0] || client.host;
         if (!host) throw new Error('NO_HOST');
-        // TODO: Start router table rebuild.
+        call.redirects++;
+        if (call.redirects > call.maxRedirects) throw new Error('MAX_REDIRECTS');
+        const port = redirect[1];
+        console.log('redirect', host, port, call.redirects);
+        if (host === client.host && port === client.port) throw new Error('INVALID_REDIRECT');
+        const nextClient = await this.createClientForHost(host, port);
+        return this.callWithClient(call, nextClient);
       }
       throw error;
     }
