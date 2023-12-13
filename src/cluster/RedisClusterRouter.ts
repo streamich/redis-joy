@@ -1,7 +1,7 @@
 import {AvlMap} from 'json-joy/es2020/util/trees/avl/AvlMap';
 import {RedisClusterSlotRange} from './RedisClusterSlotRange';
 import {RedisClusterNodeInfo} from './RedisClusterNodeInfo';
-import type {RedisClient} from '../node';
+import type {RedisClusterNodeClient} from './RedisClusterNodeClient';
 
 export class RedisClusterRouter {
   /** Map of slots ordered by slot end (max) value. */
@@ -11,7 +11,7 @@ export class RedisClusterRouter {
   protected readonly infos = new Map<string, RedisClusterNodeInfo>();
 
   /** A sparse list of clients, by node ID. */
-  protected readonly clients = new Map<string, RedisClient>();
+  protected readonly clients = new Map<string, RedisClusterNodeClient>();
 
   /** Whether the route table is empty. */
   public isEmpty(): boolean {
@@ -22,7 +22,7 @@ export class RedisClusterRouter {
    * Rebuild the router hash slot mapping.
    * @param client Redis client to use to query the cluster.
    */
-  public async rebuild(client: RedisClient): Promise<void> {
+  public async rebuild(client: RedisClusterNodeClient): Promise<void> {
     const [id, slots] = await Promise.all([
       client.clusterMyId(),
       client.clusterShards(),
@@ -47,7 +47,7 @@ export class RedisClusterRouter {
     if (this.infos.has(id)) this.clients.set(id, client);
   }
 
-  public setClient(id: string, client: RedisClient): void {
+  public setClient(id: string, client: RedisClusterNodeClient): void {
     this.clients.set(id, client);
   }
 
@@ -83,11 +83,11 @@ export class RedisClusterRouter {
     return nodes[Math.floor(Math.random() * nodes.length)];
   }
 
-  public getClient(id: string): RedisClient | undefined {
+  public getClient(id: string): RedisClusterNodeClient | undefined {
     return this.clients.get(id);
   }
 
-  public getRandomClient(): RedisClient | undefined {
+  public getRandomClient(): RedisClusterNodeClient | undefined {
     const size = this.clients.size;
     if (!size) return undefined;
     const index = Math.floor(Math.random() * size);

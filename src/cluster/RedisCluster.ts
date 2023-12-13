@@ -1,39 +1,22 @@
-import * as net from 'net';
-import * as tls from 'tls';
 import {FanOut} from 'thingies/es2020/fanout';
 import {RespEncoder} from 'json-joy/es2020/json-pack/resp';
 import {RespStreamingDecoder} from 'json-joy/es2020/json-pack/resp/RespStreamingDecoder';
 import * as commands from '../generated/commands';
 import {PartialExcept, RedisClientCodecOpts} from '../types';
-import {RedisClient, ReconnectingSocket, CmdOpts} from '../node';
+import {CmdOpts} from '../node';
 import {RedisClusterRouter} from './RedisClusterRouter';
 import {RedisClusterNodeInfo} from './RedisClusterNodeInfo';
 import {RedisClusterCall} from './RedisClusterCall';
-import {endpointByClient} from './endpoints';
 import {isMovedError, parseMovedError} from './errors';
+import {RedisClusterNodeClient, RedisClusterNodeClientOpts} from './RedisClusterNodeClient';
 
 const calculateSlot = require('cluster-key-slot');
 
 export interface RedisClusterOpts extends RedisClientCodecOpts {
   /** Nodes to connect to to retrieve cluster configuration. */
-  seeds: RedisClusterNodeConfig[];
+  seeds: RedisClusterNodeClientOpts[];
   /** Shared config applied to all nodes. */
-  connectionConfig?: RedisClusterNodeConfig;
-}
-
-export interface RedisClusterNodeConfig {
-  /** Hostname or IP address of the Redis node. Defaults to 'localhost'. */
-  host?: string;
-  /** Port of the Redis node. Defaults to 6379. */
-  port?: number;
-  /** Username to use for authentication. */
-  user?: string;
-  /** Password to use for authentication. Auth is skipped if omitted. */
-  pwd?: string;
-  /** Whether to use TLS. Defaults to false. */
-  tls?: boolean;
-  /** TLS options. */
-  secureContext?: tls.SecureContextOptions;
+  connectionConfig?: RedisClusterNodeClientOpts;
 }
 
 export class RedisCluster {
@@ -96,13 +79,13 @@ export class RedisCluster {
     });
   }
 
-  protected getAnyClient(): RedisClient {
+  protected getAnyClient(): RedisClusterNodeClient {
     const randomClient = this.router.getRandomClient();
     if (!randomClient) throw new Error('NO_CLIENT');
     return randomClient;
   }
 
-  protected async getBestAvailableWriteClient(slot: number): Promise<RedisClient> {
+  protected async getBestAvailableWriteClient(slot: number): Promise<RedisClusterNodeClient> {
     await this.whenRouterReady();
     const router = this.router;
     const info = router.getMasterForSlot(slot);
@@ -113,7 +96,7 @@ export class RedisCluster {
     return this.getAnyClient();
   }
 
-  protected async getBestAvailableReadClient(slot: number): Promise<RedisClient> {
+  protected async getBestAvailableReadClient(slot: number): Promise<RedisClusterNodeClient> {
     await this.whenRouterReady();
     const router = this.router;
     const info = router.getRandomNodeForSlot(slot);
@@ -124,7 +107,7 @@ export class RedisCluster {
     return this.getAnyClient();
   }
 
-  private async createClientFromInfo(info: RedisClusterNodeInfo): Promise<RedisClient> {
+  private async createClientFromInfo(info: RedisClusterNodeInfo): Promise<RedisClusterNodeClient> {
     const [client] = await this.createClient({
       ...this.opts.connectionConfig,
       host: info.endpoint || info.ip,
@@ -133,7 +116,7 @@ export class RedisCluster {
     return client;
   }
 
-  protected async createClient(config: RedisClusterNodeConfig): Promise<[client: RedisClient, id: string]> {
+  protected async createClient(config: RedisClusterNodeClientOpts): Promise<[client: RedisClusterNodeClient, id: string]> {
     const client = this.createClientRaw(config);
     client.start();
     const {user, pwd} = config;
@@ -145,42 +128,31 @@ export class RedisCluster {
     return [client, id];
   }
 
-  protected createClientRaw(config: RedisClusterNodeConfig): RedisClient {
-    const {host = 'localhost', port = 6379} = config;
-    const client = new RedisClient({
-      socket: new ReconnectingSocket({
-        createSocket: config.tls
-          ? () => tls.connect({
-            host,
-            port,
-            ...config.secureContext,
-          })
-          : () => net.connect({
-            host,
-            port,
-          }),
-      }),
+  protected createClientRaw(config: RedisClusterNodeClientOpts): RedisClusterNodeClient {
+    const codec = {
       encoder: this.encoder,
       decoder: this.decoder,
-    });
-    endpointByClient.set(client, host);
+    };
+    const client = new RedisClusterNodeClient({
+      ...this.opts.connectionConfig,
+      ...config,
+    }, codec);
     return client;
   }
 
-  public async getClientForKey(key: string, master: boolean): Promise<RedisClient> {
+  public async getClientForKey(key: string, master: boolean): Promise<RedisClusterNodeClient> {
     if (!key) return this.getAnyClient();
     const slot = calculateSlot(key);
     return master ? this.getBestAvailableWriteClient(slot) : this.getBestAvailableReadClient(slot);
   }
 
-  protected async callWithClient(call: RedisClusterCall, client: RedisClient): Promise<unknown> {
+  protected async callWithClient(call: RedisClusterCall, client: RedisClusterNodeClient): Promise<unknown> {
     try {
       return await client.call(call);
     } catch (error) {
       if (isMovedError(error)) {
         const redirect = parseMovedError((error as Error).message);
-        let host = redirect[0];
-        if (!host) host = endpointByClient.get(client) || '';
+        let host = redirect[0] || client.host;
         if (!host) throw new Error('NO_HOST');
         // TODO: Start router table rebuild.
       }
