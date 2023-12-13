@@ -68,6 +68,12 @@ export class ReconnectingSocket {
     return socket;
   }
 
+  public getEndpoint(): string {
+    const socket = this.socket;
+    if (!socket) throw new Error('NOT_CONNECTED');
+    return `${socket.remoteAddress}:${socket.remotePort}`;
+  }
+
   private readonly handleConnect = () => {
     // Clear the connection timeout timer.
     clearTimeout(this.connectionTimeoutTimer);

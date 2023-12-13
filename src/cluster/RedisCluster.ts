@@ -9,6 +9,8 @@ import {RedisClient, ReconnectingSocket, CmdOpts} from '../node';
 import {RedisClusterRouter} from './RedisClusterRouter';
 import {RedisClusterNodeInfo} from './RedisClusterNodeInfo';
 import {RedisClusterCall} from './RedisClusterCall';
+import {endpointByClient} from './endpoints';
+import {isMovedError, parseMovedError} from './errors';
 
 const calculateSlot = require('cluster-key-slot');
 
@@ -107,7 +109,7 @@ export class RedisCluster {
     if (!info) return this.getAnyClient();
     const client = router.getClient(info.id);
     if (client) return client;
-    this.createClientForSlot(info);
+    this.createClientFromInfo(info);
     return this.getAnyClient();
   }
 
@@ -118,26 +120,29 @@ export class RedisCluster {
     if (!info) return this.getAnyClient();
     const client = router.getClient(info.id);
     if (client) return client;
-    this.createClientForSlot(info);
+    this.createClientFromInfo(info);
     return this.getAnyClient();
   }
 
-  private async createClientForSlot(info: RedisClusterNodeInfo): Promise<RedisClient> {
-    const client = await this.createClient({
+  private async createClientFromInfo(info: RedisClusterNodeInfo): Promise<RedisClient> {
+    const [client] = await this.createClient({
       ...this.opts.connectionConfig,
-      host: info.endpoint,
+      host: info.endpoint || info.ip,
       port: info.port,
     });
-    this.router.setClient(info, client);
     return client;
   }
 
-  protected async createClient(config: RedisClusterNodeConfig): Promise<RedisClient> {
+  protected async createClient(config: RedisClusterNodeConfig): Promise<[client: RedisClient, id: string]> {
     const client = this.createClientRaw(config);
     client.start();
     const {user, pwd} = config;
-    await client.hello(3, pwd, user);
-    return client;
+    const [, id] = await Promise.all([
+      client.hello(3, pwd, user),
+      client.clusterMyId(),
+    ]);
+    this.router.setClient(id, client);
+    return [client, id];
   }
 
   protected createClientRaw(config: RedisClusterNodeConfig): RedisClient {
@@ -158,6 +163,7 @@ export class RedisCluster {
       encoder: this.encoder,
       decoder: this.decoder,
     });
+    endpointByClient.set(client, host);
     return client;
   }
 
@@ -165,6 +171,21 @@ export class RedisCluster {
     if (!key) return this.getAnyClient();
     const slot = calculateSlot(key);
     return master ? this.getBestAvailableWriteClient(slot) : this.getBestAvailableReadClient(slot);
+  }
+
+  protected async callWithClient(call: RedisClusterCall, client: RedisClient): Promise<unknown> {
+    try {
+      return await client.call(call);
+    } catch (error) {
+      if (isMovedError(error)) {
+        const redirect = parseMovedError((error as Error).message);
+        let host = redirect[0];
+        if (!host) host = endpointByClient.get(client) || '';
+        if (!host) throw new Error('NO_HOST');
+        // TODO: Start router table rebuild.
+      }
+      throw error;
+    }
   }
 
   public async call(call: RedisClusterCall): Promise<unknown> {
@@ -175,7 +196,7 @@ export class RedisCluster {
     const isWrite = commands.write.has(cmd);
     const key = call.key || (args[1] + '') || '';
     const client = await this.getClientForKey(key, isWrite);
-    return await client.call(call);
+    return await this.callWithClient(call, client);
   }
 
   public async cmd(args: unknown[], opts?: CmdOpts): Promise<unknown> {
