@@ -118,16 +118,16 @@ export class RedisCluster {
     });
   }
 
-  protected async createClient(config: RedisClusterNodeClientOpts): Promise<RedisClusterNodeClient> {
+  protected async createClient(config: RedisClusterNodeClientOpts, id?: string): Promise<RedisClusterNodeClient> {
     const client = this.createClientRaw(config);
     client.start();
     const {user, pwd} = config;
-    const [, id] = await Promise.all([
+    const response = await Promise.all([
       client.hello(3, pwd, user),
-      client.clusterMyId(),
+      id ? Promise.resolve() : client.clusterMyId(),
     ]);
-    client.id = id;
-    this.router.setClient(id, client);
+    client.id = id || response[1]!;
+    this.router.setClient(client);
     return client;
   }
 
@@ -160,7 +160,6 @@ export class RedisCluster {
         call.redirects++;
         if (call.redirects > call.maxRedirects) throw new Error('MAX_REDIRECTS');
         const port = redirect[1];
-        console.log('redirect', host, port, call.redirects);
         if (host === client.host && port === client.port) throw new Error('INVALID_REDIRECT');
         const nextClient = await this.createClientForHost(host, port);
         return this.callWithClient(call, nextClient);

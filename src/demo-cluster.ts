@@ -4,11 +4,14 @@ import {RedisCluster} from "./cluster/RedisCluster";
 
 const main = async () => {
   // const host = 'localhost';
-  const host = '127.0.0.1';
+  // const host = '127.0.0.1';
   // const host = '172.17.0.2';
-  const port = 7000;
+  // const host = 'redis-15083.c28691.us-east-1-4.ec2.cloud.rlrcp.com';
+  const host = '54.166.70.167';
+  // const port = 7000;
+  const port = 15083;
   const user = 'default';
-  const pwd = 'AoQhB7bNYljT8IiZ7nbgvSQSXiGHRwQX';
+  const pwd = '7UAmqOMRcZ0KFZUfzze2KaWW8w0Fe8pP';
 
   const client = new RedisCluster({
     seeds: [

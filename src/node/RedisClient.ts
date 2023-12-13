@@ -142,8 +142,15 @@ export class RedisClient {
     this.callFnf(callNoRes(args));
   }
 
-  public clusterMyId(): Promise<string> {
-    return this.cmd(['CLUSTER', 'MYID'], {utf8Res: true}) as Promise<string>;
+  public async clusterMyId(): Promise<string> {
+    // `CLUSTER MYID` is not supported in a number of servers, for example,
+    // redis.com returns "ERR unknown subcommand 'myid'". Instead, we parse
+    // `CLUSTER NODES` output.
+    const reg = /^([^ ]+) .+myself/gm;
+    const nodes = await this.cmd(['CLUSTER', 'NODES']) as string;
+    const match = reg.exec(nodes);
+    if (!match) throw new Error('Failed to parse CLUSTER NODES output.');
+    return match[1];
   }
 
   public clusterShards(): Promise<RedisClusterShardsResponse> {

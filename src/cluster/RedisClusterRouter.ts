@@ -47,8 +47,9 @@ export class RedisClusterRouter {
     if (this.infos.has(id)) this.clients.set(id, client);
   }
 
-  public setClient(id: string, client: RedisClusterNodeClient): void {
-    this.clients.set(id, client);
+  public setClient(client: RedisClusterNodeClient): void {
+    if (!client.id) throw new Error('NO_CLIENT_ID');
+    this.clients.set(client.id, client);
   }
 
   public getNodesForSlot(slot: number): RedisClusterNodeInfo[] {

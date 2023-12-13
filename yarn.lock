@@ -1860,10 +1860,10 @@ jsesc@^2.5.1:
   resolved "https://registry.yarnpkg.com/jsesc/-/jsesc-2.5.2.tgz#80564d2e483dacf6e8ef209650a67df3f0c283a4"
   integrity sha512-OYu7XEzjkCQ3C5Ps3QIZsQfNpqoJyZZA99wd9aWd05NCtC5pWOkShK2mkL6HXQR6/Cy2lbNdPlZBpuQHXE63gA==
 
-json-joy@^11.21.0:
-  version "11.21.0"
-  resolved "https://registry.yarnpkg.com/json-joy/-/json-joy-11.21.0.tgz#6fdb606d2d3dad097e72fe0a39740997759efe4b"
-  integrity sha512-JmrTkuxRPxCvzPhxPxOxrGg02jU7TPGNE8idWpQK7srsAAc776g9v8vyH6+HWN3ZPDoTwGPHLIc2V4/M5hSCAA==
+json-joy@^11.21.1:
+  version "11.21.1"
+  resolved "https://registry.yarnpkg.com/json-joy/-/json-joy-11.21.1.tgz#ece2fc1b01166322e94f841e122fcb6075ca1eac"
+  integrity sha512-0eTiCiQlo59/PZ9OT8pSRJFkrL2pU0Ckr20W6syr1mJ3WUoNc/YUXqCgDRnfRg8NStHWM5d3AfcJLWttzfc8uA==
   dependencies:
     arg "^5.0.2"
     hyperdyperid "^1.2.0"
