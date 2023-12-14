@@ -19,12 +19,12 @@ export interface RedisClusterNodeClientOpts {
 }
 
 export class RedisClusterNodeClient extends RedisClient {
-  /** Cluster node ID, randomly assigned when node boots, retrieved with `CLUSTER MYID`. */
-  public id: string = '';
-  /** Hostname of the Redis node. */
-  public readonly host: string;
-  /** Port of the Redis node. */
-  public readonly port: number;
+  // /** Cluster node ID, randomly assigned when node boots, retrieved with `CLUSTER MYID`. */
+  // public id: string = '';
+  // /** Hostname of the Redis node. */
+  // public readonly host: string;
+  // /** Port of the Redis node. */
+  // public readonly port: number;
 
   constructor({host = 'localhost', port = 6379, ...opts}: RedisClusterNodeClientOpts, codec: RedisClientCodecOpts) {
     super({
@@ -43,7 +43,7 @@ export class RedisClusterNodeClient extends RedisClient {
       encoder: codec.encoder,
       decoder: codec.decoder,
     });
-    this.host = host;
-    this.port = port;
+    // this.host = host;
+    // this.port = port;
   }
 }

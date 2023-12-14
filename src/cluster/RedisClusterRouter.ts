@@ -1,17 +1,17 @@
 import {AvlMap} from 'json-joy/es2020/util/trees/avl/AvlMap';
 import {RedisClusterSlotRange} from './RedisClusterSlotRange';
-import {RedisClusterNodeInfo} from './RedisClusterNodeInfo';
-import type {RedisClusterNodeClient} from './RedisClusterNodeClient';
+import {RedisClusterNode} from './RedisClusterNode';
+import {NodeRole} from './constants';
 
 export class RedisClusterRouter {
   /** Map of slots ordered by slot end (max) value. */
   protected readonly ranges = new AvlMap<number, RedisClusterSlotRange>();
 
-  /** Information about each node in the cluster, by node ID. */
-  protected readonly infos = new Map<string, RedisClusterNodeInfo>();
+  /** Map of node ID to node info instance. */
+  protected readonly byId = new Map<string, RedisClusterNode>();
 
-  /** A sparse list of clients, by node ID. */
-  protected readonly clients = new Map<string, RedisClusterNodeClient>();
+  /** Mapping of "host:port" to node info instance. */
+  protected readonly byHostAndPort = new Map<string, RedisClusterNode>();
 
   /** Whether the route table is empty. */
   public isEmpty(): boolean {
@@ -22,79 +22,71 @@ export class RedisClusterRouter {
    * Rebuild the router hash slot mapping.
    * @param client Redis client to use to query the cluster.
    */
-  public async rebuild(client: RedisClusterNodeClient): Promise<void> {
-    const [id, slots] = await Promise.all([
-      // TODO: Remove need for knowing own ID.
-      client.clusterMyId(),
-      client.clusterShards(),
-    ]);
+  public async rebuild(info: RedisClusterNode): Promise<void> {
+    const client = info.client;
+    if (!client) throw new Error('NO_CLIENT');
+    const slots = await client.clusterShards();
     this.ranges.clear();
-    this.infos.clear();
+    this.byId.clear();
+    this.byHostAndPort.clear();
     for (const slot of slots) {
       const range = new RedisClusterSlotRange(slot.slots[0], slot.slots[1], []);
-      for (const node of slot.nodes) {
-        const info = RedisClusterNodeInfo.from(node);
-        this.infos.set(info.id, info);
-        range.nodes.push(info);
+      for (const nodeInfo of slot.nodes) {
+        const node = nodeInfo.id === info.id ? RedisClusterNode.fromNode(info, nodeInfo) : RedisClusterNode.fromNodeInfo(nodeInfo);
+        this.setNode(node);
+        range.nodes.push(node);
       }
       this.ranges.insert(range.max, range);
     }
-    this.clients.forEach((client, id) => {
-      if (!this.infos.has(id)) {
-        client.stop();
-        this.clients.delete(id);
-      }
-    });
-    if (this.infos.has(id)) this.clients.set(id, client);
   }
 
-  public setClient(client: RedisClusterNodeClient): void {
-    if (!client.id) throw new Error('NO_CLIENT_ID');
-    this.clients.set(client.id, client);
+  public setNode(info: RedisClusterNode): void {
+    this.byId.set(info.id, info);
+    const port = info.port;
+    for (const host of info.hosts) {
+      const hostAndPort = host + ':' + port;
+      this.byHostAndPort.set(hostAndPort, info);
+    }
   }
 
-  public getNodesForSlot(slot: number): RedisClusterNodeInfo[] {
+  public getNodesForSlot(slot: number): RedisClusterNode[] {
     const range = this.ranges.getOrNextLower(slot);
     if (!range) return [];
     return range.v.nodes;
   }
 
-  public getMasterForSlot(slot: number): RedisClusterNodeInfo | undefined {
+  public getMasterNodeForSlot(slot: number): RedisClusterNode | undefined {
     const nodes = this.getNodesForSlot(slot);
     if (!nodes) return undefined;
-    for (const node of nodes) if (node.role === 'master') return node;
+    for (const node of nodes) if (node.role === NodeRole.MASTER) return node;
     return;
   }
 
-  public getReplicasForSlot(slot: number): RedisClusterNodeInfo[] {
+  public getReplicaNodesForSlot(slot: number): RedisClusterNode[] {
     const nodes = this.getNodesForSlot(slot);
-    const replicas: RedisClusterNodeInfo[] = [];
-    for (const node of nodes) if (node.role === 'replica') replicas.push(node);
+    const replicas: RedisClusterNode[] = [];
+    for (const node of nodes) if (node.role === NodeRole.REPLICA) replicas.push(node);
     return replicas;
   }
 
-  public getRandomReplicaForSlot(slot: number): RedisClusterNodeInfo | undefined {
-    const replicas = this.getReplicasForSlot(slot);
+  public getRandomReplicaNodeForSlot(slot: number): RedisClusterNode | undefined {
+    const replicas = this.getReplicaNodesForSlot(slot);
     if (!replicas.length) return undefined;
     return replicas[Math.floor(Math.random() * replicas.length)];
   }
 
-  public getRandomNodeForSlot(slot: number): RedisClusterNodeInfo | undefined {
+  public getRandomNodeForSlot(slot: number): RedisClusterNode | undefined {
     const nodes = this.getNodesForSlot(slot);
     if (!nodes.length) return undefined;
     return nodes[Math.floor(Math.random() * nodes.length)];
   }
 
-  public getClient(id: string): RedisClusterNodeClient | undefined {
-    return this.clients.get(id);
-  }
-
-  public getRandomClient(): RedisClusterNodeClient | undefined {
-    const size = this.clients.size;
+  public getRandomNode(): RedisClusterNode | undefined {
+    const size = this.byId.size;
     if (!size) return undefined;
     const index = Math.floor(Math.random() * size);
     let i = 0;
-    for (const client of this.clients.values())
+    for (const client of this.byId.values())
       if (i++ === index) return client;
     return;
   }

@@ -4,7 +4,7 @@ import {RespStreamingDecoder} from 'json-joy/es2020/json-pack/resp/RespStreaming
 import * as commands from '../generated/commands';
 import {PartialExcept, RedisClientCodecOpts} from '../types';
 import {RedisClusterRouter} from './RedisClusterRouter';
-import {RedisClusterNodeInfo} from './RedisClusterNodeInfo';
+import {RedisClusterNode} from './RedisClusterNode';
 import {RedisClusterCall} from './RedisClusterCall';
 import {isMovedError, parseMovedError} from './errors';
 import {RedisClusterNodeClient, RedisClusterNodeClientOpts} from './RedisClusterNodeClient';
@@ -51,7 +51,7 @@ export class RedisCluster {
   }
 
 
-  // ---------------------------------------------------- Events
+  // ------------------------------------------------------------------- Events
 
   /** Emitted on unexpected and asynchronous errors. */
   public readonly onError = new FanOut<Error>();
@@ -89,11 +89,14 @@ export class RedisCluster {
     (async () => {
       if (this.stopped) return;
       if (!this.router.isEmpty()) return;
-      const {seeds} = this.opts;
+      const {seeds, connectionConfig} = this.opts;
       seed = seed % seeds.length;
-      const client = await this.createClientFromSeed(seeds[seed]);
+      const seedConfig = seeds[seed]
+      const client = await this.createClientFromSeed(seedConfig);
       if (this.stopped) return;
-      await this.router.rebuild(client);
+      const tls = !!seedConfig.tls || !!connectionConfig?.tls;
+      const node = new RedisClusterNode(client.id, client.port, [client.host], tls);
+      await this.router.rebuild(node);
       if (this.stopped) return;
       this.initialTableBuildAttempt = 0;
       this.onRouter.emit();
@@ -146,13 +149,74 @@ export class RedisCluster {
   }
 
   private async rebuildRoutingTable(): Promise<void> {
-    const client = await this.getAnyClientOrSeed();
-    if (this.stopped) return;
-    await this.router.rebuild(client);
+    // const client = await this.getAnyClientOrSeed();
+    // if (this.stopped) return;
+    // await this.router.rebuild(client);
   }
 
 
-  // -------------------------------------------------------- Client management
+  // ------------------------------------------------------ Client construction
+
+
+  private async createClientFromInfo(info: RedisClusterNode): Promise<RedisClusterNodeClient> {
+    return await this.createClientForHost(info.endpoint || info.ip, info.port);
+  }
+
+  private async createClientForHost(host: string, port: number): Promise<RedisClusterNodeClient> {
+    return await this.createNode({
+      ...this.opts.connectionConfig,
+      host,
+      port,
+    });
+  }
+
+  protected createClientFromSeed(seed: RedisClusterNodeClientOpts): Promise<RedisClusterNodeClient> {
+    return this.createNode({
+      ...this.opts.connectionConfig,
+      ...seed,
+    });
+  }
+
+
+  /**
+   * 1. Create from host:port
+   * 2. Create from node info
+   *    1. Use preferred node info host
+   *    2. Iterate through all node info hosts
+   */
+
+  protected async createNode(config: RedisClusterNodeClientOpts, id?: string): Promise<RedisClusterNode> {
+    const client = this.createClientRaw(config);
+    client.start();
+    const {user, pwd} = config;
+    const response = await Promise.all([
+      client.hello(3, pwd, user),
+      id ? Promise.resolve() : client.clusterMyId(),
+    ]);
+    this.router.setNode(client);
+    return client;
+  }
+
+  protected createClientRaw(config: RedisClusterNodeClientOpts): RedisClusterNodeClient {
+    const codec = {
+      encoder: this.encoder,
+      decoder: this.decoder,
+    };
+    const client = new RedisClusterNodeClient({
+      ...this.opts.connectionConfig,
+      ...config,
+    }, codec);
+    return client;
+  }
+
+
+  // ----------------------------------------------------------- Client picking
+
+  public async getClientForKey(key: string, write: boolean): Promise<RedisClusterNodeClient> {
+    if (!key) return this.getAnyClient();
+    const slot = calculateSlot(key);
+    return write ? this.getBestAvailableWriteClient(slot) : this.getBestAvailableReadClient(slot);
+  }
 
   protected getAnyClient(): RedisClusterNodeClient {
     const randomClient = this.router.getRandomClient();
@@ -171,13 +235,11 @@ export class RedisCluster {
   protected async getBestAvailableWriteClient(slot: number): Promise<RedisClusterNodeClient> {
     await this.whenRouterReady();
     const router = this.router;
-    const info = router.getMasterForSlot(slot);
+    const info = router.getMasterNodeForSlot(slot);
     if (!info) return this.getAnyClient();
     const client = router.getClient(info.id);
     if (client) return client;
-    // TODO: construct the right client, as we will be redirected here anyways.
-    this.createClientFromInfo(info);
-    return this.getAnyClient();
+    return await this.createClientFromInfo(info);
   }
 
   protected async getBestAvailableReadClient(slot: number): Promise<RedisClusterNodeClient> {
@@ -187,70 +249,19 @@ export class RedisCluster {
     if (!info) return this.getAnyClient();
     const client = router.getClient(info.id);
     if (client) return client;
-    // TODO: construct the right client, as we will be redirected here anyways.
-    this.createClientFromInfo(info);
-    return this.getAnyClient();
-  }
-
-  private async createClientFromInfo(info: RedisClusterNodeInfo): Promise<RedisClusterNodeClient> {
-    return this.createClientForHost(info.endpoint || info.ip, info.port);
-  }
-
-  private async createClientForHost(host: string, port: number): Promise<RedisClusterNodeClient> {
-    return this.createClient({
-      ...this.opts.connectionConfig,
-      host,
-      port,
-    });
-  }
-
-  protected createClientFromSeed(seed: RedisClusterNodeClientOpts): Promise<RedisClusterNodeClient> {
-    return this.createClient({
-      ...this.opts.connectionConfig,
-      ...seed,
-    });
-  }
-
-  protected async createClient(config: RedisClusterNodeClientOpts, id?: string): Promise<RedisClusterNodeClient> {
-    const client = this.createClientRaw(config);
-    client.start();
-    const {user, pwd} = config;
-    const response = await Promise.all([
-      client.hello(3, pwd, user),
-      id ? Promise.resolve() : client.clusterMyId(),
-    ]);
-    client.id = id || response[1]!;
-    this.router.setClient(client);
-    return client;
-  }
-
-  protected createClientRaw(config: RedisClusterNodeClientOpts): RedisClusterNodeClient {
-    const codec = {
-      encoder: this.encoder,
-      decoder: this.decoder,
-    };
-    const client = new RedisClusterNodeClient({
-      ...this.opts.connectionConfig,
-      ...config,
-    }, codec);
-    return client;
-  }
-
-  public async getClientForKey(key: string, master: boolean): Promise<RedisClusterNodeClient> {
-    if (!key) return this.getAnyClient();
-    const slot = calculateSlot(key);
-    return master ? this.getBestAvailableWriteClient(slot) : this.getBestAvailableReadClient(slot);
+    return await this.createClientFromInfo(info);
   }
 
 
   // -------------------------------------------------------- Command execution
 
-  protected async callWithClient(call: RedisClusterCall): Promise<unknown> {
+  protected async __call(call: RedisClusterCall): Promise<unknown> {
     const client = call.client!;
     try {
       return await client.call(call);
     } catch (error) {
       if (isMovedError(error)) {
+        console.log('MOVED');
         this.scheduleRoutingTableRebuild();
         const redirect = parseMovedError((error as Error).message);
         let host = redirect[0] || client.host;
@@ -259,7 +270,7 @@ export class RedisCluster {
         if (port === client.port && host === client.host) throw new Error('SELF_REDIRECT');
         const nextClient = await this.createClientForHost(host, port);
         const next = RedisClusterCall.redirect(call, nextClient, RedirectType.MOVED);
-        return await this.callWithClient(next);
+        return await this.__call(next);
       }
       // TODO: Handle ASK redirection.
       throw error;
@@ -273,8 +284,10 @@ export class RedisCluster {
     cmd = cmd.toUpperCase();
     const isWrite = commands.write.has(cmd);
     const key = call.key || (args[1] + '') || '';
+    console.log('key', key, 'isWrite', isWrite);
     call.client = await this.getClientForKey(key, isWrite);
-    return await this.callWithClient(call);
+    console.log('client', call.client.host, call.client.port);
+    return await this.__call(call);
   }
 
   public async cmd(args: unknown[], opts?: ClusterCmdOpts): Promise<unknown> {

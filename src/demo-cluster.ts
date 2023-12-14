@@ -7,7 +7,8 @@ const main = async () => {
   // const host = '127.0.0.1';
   // const host = '172.17.0.2';
   // const host = 'redis-15083.c28691.us-east-1-4.ec2.cloud.rlrcp.com';
-  const host = '54.166.70.167';
+  const host = 'redis-15083.c28691.us-east-1-4.ec2.cloud.rlrcp.com';
+  // const host = '54.166.70.167';
   // const port = 7000;
   const port = 15083;
   const user = 'default';
@@ -40,11 +41,11 @@ const main = async () => {
     }
   };
 
-  // await exec(['SET', 'foo', 1]);
-  await exec(['SET', 'bar', 125], {key: 'bar'});
-  // await exec(['SET', 'baz', 3]);
-  // await exec(['SET', 'qux', 4]);
-  // await exec(['SET', 'quux', 5]);
+  await exec(['SET', 'foo', 1], {key: 'foo'});
+  await exec(['SET', 'bar', 2], {key: 'bar'});
+  await exec(['SET', 'baz', 3], {key: 'baz'});
+  await exec(['SET', 'qux', 4], {key: 'qux'});
+  await exec(['SET', 'quux', 5], {key: 'quux'});
 };
 
 main().catch((err) => {
