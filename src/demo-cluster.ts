@@ -15,13 +15,12 @@ const main = async () => {
 
   const client = new RedisCluster({
     seeds: [
-      {
-        host,
-        port,
-        user,
-        pwd,
-      }
+      {host, port},
     ],
+    connectionConfig: {
+      user,
+      pwd,
+    },
   });
 
   client.onError.listen((err) => {

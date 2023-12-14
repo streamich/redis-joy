@@ -30,9 +30,6 @@ export class RedisClient {
       decoder.push(data);
       this.scheduleRead();
     });
-    socket.onError.listen((err: Error) => {
-      console.log('err', err);
-    });
   }
 
   protected scheduleWrite() {
@@ -109,6 +106,7 @@ export class RedisClient {
       await this.call(new RedisCall(args));
       this.protocol = protocol;
     } catch (error) {
+      
       // This is likely protocol switching error. Try again with protocol 2.
       const args = usr ? ['AUTH', usr, pwd] : ['AUTH', pwd];
       await this.call(new RedisCall(args));
