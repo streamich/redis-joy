@@ -24,6 +24,7 @@ export class RedisClusterRouter {
    */
   public async rebuild(client: RedisClusterNodeClient): Promise<void> {
     const [id, slots] = await Promise.all([
+      // TODO: Remove need for knowing own ID.
       client.clusterMyId(),
       client.clusterShards(),
     ]);

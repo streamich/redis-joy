@@ -1,14 +1,16 @@
 import {RedisCall} from "../node";
+import {RedirectType} from "./constants";
 import type {RedisClusterNodeClient} from "./RedisClusterNodeClient";
 
 /**
  * Represents a single Redis request/response command call.
  */
 export class RedisClusterCall extends RedisCall {
-  public static redirect(call: RedisClusterCall, client: RedisClusterNodeClient): RedisClusterCall {
+  public static redirect(call: RedisClusterCall, client: RedisClusterNodeClient, type: RedirectType): RedisClusterCall {
     const next = new RedisClusterCall(call.args);
-    next.prev = call;
+    // next.prev = call;
     next.client = client;
+    next.redirect = type;
     next.redirects = call.redirects + 1;
     next.maxRedirects = call.maxRedirects;
     if (next.redirects > next.maxRedirects) throw new Error('MAX_REDIRECTS');
@@ -22,6 +24,11 @@ export class RedisClusterCall extends RedisCall {
    * Key to use for routing the command to the correct node.
    */
   public key: string = '';
+
+  /**
+   * Type of redirect of this call.
+   */
+  public redirect: RedirectType = RedirectType.NONE;
 
   /**
    * Number of redirects that have been performed for this command.
@@ -41,5 +48,5 @@ export class RedisClusterCall extends RedisCall {
   /**
    * Previous call in the chain, in case the command was redirected.
    */
-  public prev: RedisClusterCall | null = null;
+  // public prev: RedisClusterCall | null = null;
 }
