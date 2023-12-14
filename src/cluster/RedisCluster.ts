@@ -265,7 +265,8 @@ export class RedisCluster {
         if (!host) throw new Error('NO_HOST');
         const port = redirect[1];
         if (port === client.port && host === client.host) throw new Error('SELF_REDIRECT');
-        const nextClient = (await this.getRedirectNode(host, port)).client!;
+        const redirectNode = await this.getRedirectNode(host, port);
+        const nextClient = redirectNode.client ?? await this.ensureNodeHasClient(redirectNode);
         const next = RedisClusterCall.redirect(call, nextClient, RedirectType.MOVED);
         return await this.__call(next);
       }
