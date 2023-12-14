@@ -13,10 +13,29 @@ import type {CmdOpts} from '../node';
 const calculateSlot = require('cluster-key-slot');
 
 export interface RedisClusterOpts extends RedisClientCodecOpts {
-  /** Nodes to connect to to retrieve cluster configuration. */
+  /**
+   * Nodes to connect to to retrieve cluster configuration. At least one seed
+   * node must be provided. Normally you only need to specify host and port
+   * here, but you can also specify `user` and `pwd` if you need to. Normally,
+   * the `user` and `pwd` should be the same for all nodes, so you should
+   * specify them in `connectionConfig` instead.
+   */
   seeds: RedisClusterNodeClientOpts[];
-  /** Shared config applied to all nodes. */
+
+  /**
+   * Shared config applied to all nodes. Set your common all-nodes config
+   * here, such as `user` and `pwd`.
+   */
   connectionConfig?: RedisClusterNodeClientOpts;
+
+  /**
+   * Maximum number of redirects to perform before giving up. Usually each
+   * command will be routed to the right node, if the `key` option is provided.
+   * However, sometimes the cluster topology changes and the command needs to
+   * be redirected to a different node. This option controls how many times
+   * the command will be redirected before giving up.
+   */
+  maxRedirects?: number;
 }
 
 export class RedisCluster {
@@ -160,11 +179,12 @@ export class RedisCluster {
         let host = redirect[0] || client.host;
         if (!host) throw new Error('NO_HOST');
         const port = redirect[1];
-        if (host === client.host && port === client.port) throw new Error('SELF_REDIRECT');
+        if (port === client.port && host === client.host) throw new Error('SELF_REDIRECT');
         const nextClient = await this.createClientForHost(host, port);
         const next = RedisClusterCall.redirect(call, nextClient);
         return await this.callWithClient(next);
       }
+      // TODO: Handle ASK redirection.
       throw error;
     }
   }
