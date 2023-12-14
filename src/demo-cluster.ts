@@ -42,10 +42,10 @@ const main = async () => {
   };
 
   await exec(['SET', 'foo', 1], {key: 'foo'});
-  await exec(['SET', 'bar', 2], {key: 'bar'});
-  await exec(['SET', 'baz', 3], {key: 'baz'});
-  await exec(['SET', 'qux', 4], {key: 'qux'});
-  await exec(['SET', 'quux', 5], {key: 'quux'});
+  // await exec(['SET', 'bar', 2], {key: 'bar'});
+  // await exec(['SET', 'baz', 3], {key: 'baz'});
+  // await exec(['SET', 'qux', 4], {key: 'qux'});
+  // await exec(['SET', 'quux', 5], {key: 'quux'});
 };
 
 main().catch((err) => {

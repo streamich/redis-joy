@@ -1,7 +1,7 @@
 import {AvlMap} from 'json-joy/es2020/util/trees/avl/AvlMap';
 import {RedisClusterSlotRange} from './RedisClusterSlotRange';
 import {RedisClusterNode} from './RedisClusterNode';
-import {NodeRole} from './constants';
+import {NodeHealth, NodeRole} from './constants';
 
 export class RedisClusterRouter {
   /** Map of slots ordered by slot end (max) value. */
@@ -40,13 +40,42 @@ export class RedisClusterRouter {
     }
   }
 
-  public setNode(info: RedisClusterNode): void {
-    this.byId.set(info.id, info);
-    const port = info.port;
-    for (const host of info.hosts) {
+  /** Overwrite the node value. */
+  public setNode(node: RedisClusterNode): void {
+    this.byId.set(node.id, node);
+    const port = node.port;
+    for (const host of node.hosts) {
       const hostAndPort = host + ':' + port;
-      this.byHostAndPort.set(hostAndPort, info);
+      this.byHostAndPort.set(hostAndPort, node);
     }
+  }
+
+  /** Merge the node value into a potentially existing node. */
+  public mergeNode(node: RedisClusterNode): RedisClusterNode {
+    const existing = this.byId.get(node.id);
+    if (existing) {
+      if (existing.port !== node.port) throw new Error('INVALID_PORT');
+      for (const host of node.hosts) {
+        if (!existing.hosts.includes(host)) {
+          existing.hosts.push(host);
+          const endpoint = host + ':' + existing.port;
+          this.byHostAndPort.set(endpoint, existing);
+        }
+      }
+      if (existing.role === NodeRole.UNKNOWN) existing.role = node.role;
+      if (existing.replicationOffset === 0) existing.replicationOffset = node.replicationOffset;
+      if (existing.health === NodeHealth.UNKNOWN) existing.health = node.health;
+      if (!existing.client) existing.client = node.client;
+      return existing;
+    } else {
+      this.setNode(node);
+      return node;
+    }
+  }
+
+  public getNodeByEndpoint(host: string, port: number): RedisClusterNode | undefined {
+    const hostAndPort = host + ':' + port;
+    return this.byHostAndPort.get(hostAndPort);
   }
 
   public getNodesForSlot(slot: number): RedisClusterNode[] {

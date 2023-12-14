@@ -1,5 +1,5 @@
 import {NodeHealth, NodeRole} from "./constants";
-import type {RedisClusterShardsResponseNode} from "../node/types";
+import type {RedisClusterShardsResponseNode} from "./types";
 import type {RedisClusterNodeClient} from "./RedisClusterNodeClient";
 
 const annotate = (node: RedisClusterNode, nodeInfo: RedisClusterShardsResponseNode): void => {

@@ -4,7 +4,6 @@ import {RespStreamingDecoder} from 'json-joy/es2020/json-pack/resp/RespStreaming
 import {ReconnectingSocket} from './ReconnectingSocket';
 import {RedisClientCodecOpts} from '../types';
 import {RedisCall, callNoRes} from './RedisCall';
-import type {RedisClusterShardsResponse} from './types';
 
 export interface RedisClientOpts extends RedisClientCodecOpts {
   socket: ReconnectingSocket;
@@ -13,14 +12,6 @@ export interface RedisClientOpts extends RedisClientCodecOpts {
 export class RedisClient {
   protected readonly socket: ReconnectingSocket;
   protected protocol: 2 | 3 = 2;
-  protected readonly encoder: RespEncoder;
-  protected readonly decoder: RespStreamingDecoder;
-  protected readonly requests: RedisCall[] = [];
-  protected readonly responses: Array<null | RedisCall> = [];
-  protected encodingTimer?: NodeJS.Immediate = undefined;
-  protected decodingTimer?: NodeJS.Immediate = undefined;
-
-  public readonly onProtocolError = new Defer<Error>();
 
   constructor(opts: RedisClientOpts) {
     const socket = this.socket = opts.socket;
@@ -31,6 +22,18 @@ export class RedisClient {
       this.scheduleRead();
     });
   }
+
+  
+  // ------------------------------------------------------------------- Events
+
+  public readonly onProtocolError = new Defer<Error>();
+
+
+  // ------------------------------------------------------------ Socket writes
+
+  protected readonly encoder: RespEncoder;
+  protected readonly requests: RedisCall[] = [];
+  protected encodingTimer?: NodeJS.Immediate = undefined;
 
   protected scheduleWrite() {
     if (this.encodingTimer) return;
@@ -56,6 +59,13 @@ export class RedisClient {
       // TODO: Re-establish socket ...
     }
   };
+
+
+  // ------------------------------------------------------------- Socket reads
+
+  protected readonly decoder: RespStreamingDecoder;
+  protected readonly responses: Array<null | RedisCall> = [];
+  protected decodingTimer?: NodeJS.Immediate = undefined;
 
   protected scheduleRead() {
     if (this.decodingTimer) return;
@@ -91,6 +101,9 @@ export class RedisClient {
     }
   };
 
+
+  // -------------------------------------------------------------- Life cycles
+
   public start() {
     this.socket.start();
   }
@@ -99,19 +112,8 @@ export class RedisClient {
     this.socket.stop();
   }
 
-  /** Authenticate and negotiate protocol version. */
-  public async hello(protocol: 2 | 3, pwd?: string, usr: string = ''): Promise<void> {
-    try {
-      const args = pwd ? ['HELLO', protocol, 'AUTH', usr, pwd] : ['HELLO', protocol];
-      await this.call(new RedisCall(args));
-      this.protocol = protocol;
-    } catch (error) {
-      
-      // This is likely protocol switching error. Try again with protocol 2.
-      const args = usr ? ['AUTH', usr, pwd] : ['AUTH', pwd];
-      await this.call(new RedisCall(args));
-    }
-  }
+
+  // -------------------------------------------------------- Command execution
 
   public async call(call: RedisCall): Promise<unknown> {
     const noResponse = call.noRes;
@@ -140,19 +142,21 @@ export class RedisClient {
     this.callFnf(callNoRes(args));
   }
 
-  public async clusterMyId(): Promise<string> {
-    // `CLUSTER MYID` is not supported in a number of servers, for example,
-    // redis.com returns "ERR unknown subcommand 'myid'". Instead, we parse
-    // `CLUSTER NODES` output.
-    const reg = /^([^ ]+) .+myself/gm;
-    const nodes = await this.cmd(['CLUSTER', 'NODES']) as string;
-    const match = reg.exec(nodes);
-    if (!match) throw new Error('Failed to parse CLUSTER NODES output.');
-    return match[1];
-  }
 
-  public clusterShards(): Promise<RedisClusterShardsResponse> {
-    return this.cmd(['CLUSTER', 'SHARDS'], {utf8Res: true}) as Promise<RedisClusterShardsResponse>;
+  // -------------------------------------------------------- Built-in commands
+
+  /** Authenticate and negotiate protocol version. */
+  public async hello(protocol: 2 | 3, pwd?: string, usr: string = ''): Promise<void> {
+    try {
+      const args = pwd ? ['HELLO', protocol, 'AUTH', usr, pwd] : ['HELLO', protocol];
+      await this.call(new RedisCall(args));
+      this.protocol = protocol;
+    } catch (error) {
+      
+      // This is likely protocol switching error. Try again with protocol 2.
+      const args = usr ? ['AUTH', usr, pwd] : ['AUTH', pwd];
+      await this.call(new RedisCall(args));
+    }
   }
 }
 
