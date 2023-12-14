@@ -3,12 +3,12 @@ import {RespEncoder} from 'json-joy/es2020/json-pack/resp';
 import {RespStreamingDecoder} from 'json-joy/es2020/json-pack/resp/RespStreamingDecoder';
 import * as commands from '../generated/commands';
 import {PartialExcept, RedisClientCodecOpts} from '../types';
-import {CmdOpts} from '../node';
 import {RedisClusterRouter} from './RedisClusterRouter';
 import {RedisClusterNodeInfo} from './RedisClusterNodeInfo';
 import {RedisClusterCall} from './RedisClusterCall';
 import {isMovedError, parseMovedError} from './errors';
 import {RedisClusterNodeClient, RedisClusterNodeClientOpts} from './RedisClusterNodeClient';
+import type {CmdOpts} from '../node';
 
 const calculateSlot = require('cluster-key-slot');
 
@@ -149,20 +149,21 @@ export class RedisCluster {
     return master ? this.getBestAvailableWriteClient(slot) : this.getBestAvailableReadClient(slot);
   }
 
-  protected async callWithClient(call: RedisClusterCall, client: RedisClusterNodeClient): Promise<unknown> {
+  protected async callWithClient(call: RedisClusterCall): Promise<unknown> {
+    const client = call.client!;
     try {
       return await client.call(call);
     } catch (error) {
       if (isMovedError(error)) {
+        // TODO: Schedule routing table rebuild.
         const redirect = parseMovedError((error as Error).message);
         let host = redirect[0] || client.host;
         if (!host) throw new Error('NO_HOST');
-        call.redirects++;
-        if (call.redirects > call.maxRedirects) throw new Error('MAX_REDIRECTS');
         const port = redirect[1];
-        if (host === client.host && port === client.port) throw new Error('INVALID_REDIRECT');
+        if (host === client.host && port === client.port) throw new Error('SELF_REDIRECT');
         const nextClient = await this.createClientForHost(host, port);
-        return this.callWithClient(call, nextClient);
+        const next = RedisClusterCall.redirect(call, nextClient);
+        return await this.callWithClient(next);
       }
       throw error;
     }
@@ -175,16 +176,20 @@ export class RedisCluster {
     cmd = cmd.toUpperCase();
     const isWrite = commands.write.has(cmd);
     const key = call.key || (args[1] + '') || '';
-    const client = await this.getClientForKey(key, isWrite);
-    return await this.callWithClient(call, client);
+    call.client = await this.getClientForKey(key, isWrite);
+    return await this.callWithClient(call);
   }
 
-  public async cmd(args: unknown[], opts?: CmdOpts): Promise<unknown> {
+  public async cmd(args: unknown[], opts?: ClusterCmdOpts): Promise<unknown> {
     const call = new RedisClusterCall(args);
     if (opts) {
       if (opts.utf8Res) call.utf8Res = true;
       if (opts.noRes) call.noRes = true;
+      if (opts.key) call.key = opts.key;
+      if (opts.maxRedirects) call.maxRedirects = opts.maxRedirects;
     }
-    return this.call(call);
+    return await this.call(call);
   }
 }
+
+export type ClusterCmdOpts = CmdOpts & Partial<Pick<RedisClusterCall, 'key' | 'maxRedirects'>>;
