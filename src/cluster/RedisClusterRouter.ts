@@ -8,7 +8,7 @@ import type {RedisCluster} from './RedisCluster';
 import type {RedisClusterNodeClient} from './RedisClusterNodeClient';
 
 export class RedisClusterRouter implements Printable {
-  /** Map of slots ordered by slot end (max) value. */
+  /** Map of slots ordered by slot end (min) value. */
   protected readonly ranges = new AvlMap<number, RedisClusterSlotRange>();
 
   /** Map of node ID to node info instance. */
@@ -34,6 +34,7 @@ export class RedisClusterRouter implements Printable {
     this.ranges.clear();
     this.byId.clear();
     this.byHostAndPort.clear();
+    if (!slots.length) throw new Error('NO_SLOTS');
     for (const slot of slots) {
       const range = new RedisClusterSlotRange(slot.slots[0], slot.slots[1], []);
       for (const nodeInfo of slot.nodes) {
@@ -43,7 +44,7 @@ export class RedisClusterRouter implements Printable {
         this.setNode(node);
         range.nodes.push(node);
       }
-      this.ranges.insert(range.max, range);
+      this.ranges.insert(range.min, range);
     }
     // TODO: remove orphan clients
   }

@@ -257,7 +257,6 @@ export class RedisCluster implements Printable {
       return await client.call(call);
     } catch (error) {
       if (isMovedError(error)) {
-        console.log('MOVED', error);
         this.scheduleRoutingTableRebuild();
         const redirect = parseMovedError((error as Error).message);
         let host = redirect[0] || client.host;
