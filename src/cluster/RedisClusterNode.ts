@@ -28,16 +28,6 @@ export class RedisClusterNode implements Printable {
     return node;
   };
 
-  public static fromNode = (node: RedisClusterNode, nodeInfo: RedisClusterShardsResponseNode): RedisClusterNode => {
-    const hosts: string[] = [];
-    if (nodeInfo.endpoint && nodeInfo.endpoint !== '?') hosts.push(nodeInfo.endpoint + '');
-    if (nodeInfo.hostname && nodeInfo.hostname !== '?') hosts.push(nodeInfo.hostname + '');
-    if (nodeInfo.ip && nodeInfo.ip !== '?') hosts.push(nodeInfo.ip + '');
-    if (hosts.length) node.hosts.push(...hosts);
-    annotate(node, nodeInfo);
-    return node;
-  };
-
   public readonly id: string;
   public readonly port: number;
   public readonly hosts: string[];
@@ -50,7 +40,7 @@ export class RedisClusterNode implements Printable {
   constructor(id: string, port: number, hosts: string[], tls: boolean) {
     this.id = id;
     this.port = port;
-    this.hosts = hosts;
+    this.hosts = [...new Set(hosts)];
     this.tls = tls;
   }
 
@@ -58,14 +48,9 @@ export class RedisClusterNode implements Printable {
   // ---------------------------------------------------------------- Printable
 
   public toString(tab?: string): string {
-    return 'node' + printTree(tab, [
-      tab => `id: ${this.id}`,
-      tab => `port: ${this.port}`,
-      tab => `hosts: ${this.hosts.join(', ')}`,
-      tab => `tls: ${this.tls}`,
-      tab => `role: ${this.role}`,
-      tab => `replicationOffset: ${this.replicationOffset}`,
-      tab => `health: ${this.health}`,
+    const role = this.role === NodeRole.MASTER ? 'master' : 'replica';
+    const health = this.health === NodeHealth.ONLINE ? 'online' : this.health === NodeHealth.FAILED ? 'failed' : 'loading';
+    return `node (${this.id})${this.tls ? ' TLS' : ''} [${this.hosts.join(', ')}]:${this.port} ${role} ${this.replicationOffset} ${health}` + printTree(tab, [
       this.client ? (tab => `${this.client?.toString(tab)}`) : null,
     ]);
   }

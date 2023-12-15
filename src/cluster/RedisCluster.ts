@@ -69,7 +69,7 @@ export class RedisCluster implements Printable {
 
   public start(): void {
     this.stopped = false;
-    this.buildInitialRouteTable();
+    this.buildInitialRoutingTable();
   }
 
   public stop(): void {
@@ -82,12 +82,12 @@ export class RedisCluster implements Printable {
   }
 
 
-  // ----------------------------------------------- Build initial router table
+  // ---------------------------------------------- Build initial routing table
 
   private initialTableBuildAttempt = 0;
   private initialTableBuildTimer: NodeJS.Timeout | undefined = undefined;
 
-  private buildInitialRouteTable(seed: number = 0): void {
+  private buildInitialRoutingTable(seed: number = 0): void {
     const attempt = this.initialTableBuildAttempt++;
     (async () => {
       if (this.stopped) return;
@@ -103,7 +103,7 @@ export class RedisCluster implements Printable {
       this.onRouter.emit();
     })().catch((error) => {
       const delay = Math.max(Math.min(1000 * 2 ** attempt, 1000 * 60), 1000);
-      this.initialTableBuildTimer = setTimeout(() => this.buildInitialRouteTable(seed + 1), delay);
+      this.initialTableBuildTimer = setTimeout(() => this.buildInitialRoutingTable(seed + 1), delay);
       this.onError.emit(error);
     });
   }

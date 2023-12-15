@@ -34,7 +34,7 @@ export class RedisClusterRouter implements Printable {
     for (const slot of slots) {
       const range = new RedisClusterSlotRange(slot.slots[0], slot.slots[1], []);
       for (const nodeInfo of slot.nodes) {
-        const node = nodeInfo.id === info.id ? RedisClusterNode.fromNode(info, nodeInfo) : RedisClusterNode.fromNodeInfo(nodeInfo);
+        const node = nodeInfo.id === info.id ? RedisClusterNode.fromNodeInfo(nodeInfo) : RedisClusterNode.fromNodeInfo(nodeInfo, client.host);
         this.setNode(node);
         range.nodes.push(node);
       }
