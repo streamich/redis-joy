@@ -4,6 +4,8 @@ import {RedisClusterNode} from './RedisClusterNode';
 import {NodeHealth, NodeRole} from './constants';
 import {printTree} from 'json-joy/es2020/util/print/printTree';
 import type {Printable} from 'json-joy/es2020/util/print/types';
+import type {RedisCluster} from './RedisCluster';
+import type {RedisClusterNodeClient} from './RedisClusterNodeClient';
 
 export class RedisClusterRouter implements Printable {
   /** Map of slots ordered by slot end (max) value. */
@@ -15,6 +17,8 @@ export class RedisClusterRouter implements Printable {
   /** Mapping of "host:port" to node info instance. */
   protected readonly byHostAndPort = new Map<string, RedisClusterNode>();
 
+  constructor(protected readonly cluster: RedisCluster) {}
+
   /** Whether the route table is empty. */
   public isEmpty(): boolean {
     return this.ranges.isEmpty();
@@ -24,8 +28,7 @@ export class RedisClusterRouter implements Printable {
    * Rebuild the router hash slot mapping.
    * @param client Redis client to use to query the cluster.
    */
-  public async rebuild(info: RedisClusterNode): Promise<void> {
-    const client = info.client;
+  public async rebuild(client: RedisClusterNodeClient, id?: string): Promise<void> {
     if (!client) throw new Error('NO_CLIENT');
     const slots = await client.clusterShards();
     this.ranges.clear();
@@ -34,12 +37,15 @@ export class RedisClusterRouter implements Printable {
     for (const slot of slots) {
       const range = new RedisClusterSlotRange(slot.slots[0], slot.slots[1], []);
       for (const nodeInfo of slot.nodes) {
-        const node = nodeInfo.id === info.id ? RedisClusterNode.fromNodeInfo(nodeInfo) : RedisClusterNode.fromNodeInfo(nodeInfo, client.host);
+        const node = id && (nodeInfo.id === id)
+          ? RedisClusterNode.fromNodeInfo(this.cluster, nodeInfo)
+          : RedisClusterNode.fromNodeInfo(this.cluster, nodeInfo, client.host);
         this.setNode(node);
         range.nodes.push(node);
       }
       this.ranges.insert(range.max, range);
     }
+    // TODO: remove orphan clients
   }
 
   /** Overwrite the node value. */
@@ -67,7 +73,6 @@ export class RedisClusterRouter implements Printable {
       if (existing.role === NodeRole.UNKNOWN) existing.role = node.role;
       if (existing.replicationOffset === 0) existing.replicationOffset = node.replicationOffset;
       if (existing.health === NodeHealth.UNKNOWN) existing.health = node.health;
-      if (!existing.client) existing.client = node.client;
       return existing;
     } else {
       this.setNode(node);

@@ -46,7 +46,8 @@ export interface RedisClusterOpts extends RedisClientCodecOpts {
 export class RedisCluster implements Printable {
   protected readonly encoder: RespEncoder;
   protected readonly decoder: RespStreamingDecoder;
-  protected readonly router = new RedisClusterRouter();
+  protected readonly router = new RedisClusterRouter(this);
+  protected readonly clients = new Map<string, RedisClusterNodeClient>();
 
   constructor(protected readonly opts: PartialExcept<RedisClusterOpts, 'seeds'>) {
     this.encoder = opts.encoder ?? new RespEncoder();
@@ -95,9 +96,9 @@ export class RedisCluster implements Printable {
       const {seeds} = this.opts;
       seed = seed % seeds.length;
       const seedConfig = seeds[seed];
-      const node = await this.startClientFromConfig(seedConfig);
+      const [client, id] = await this.startClientFromConfig(seedConfig);
       if (this.stopped) return;
-      await this.router.rebuild(node);
+      await this.router.rebuild(client, id);
       if (this.stopped) return;
       this.initialTableBuildAttempt = 0;
       this.onRouter.emit();
@@ -159,19 +160,10 @@ export class RedisCluster implements Printable {
   // ------------------------------------------------------ Client construction
 
   protected async ensureNodeHasClient(node: RedisClusterNode): Promise<RedisClusterNodeClient> {
-    let client = node.client;
+    const id = node.id;
+    const client = this.clients.get(id);
     if (client) return client;
-    client = await this.startClientFromNode(node);
-    node.client = client;
-    return client;
-  }
-
-  /** When redirect points to a new host, which is not present in the route table */
-  private async startClientFromOrphanRedirect(host: string, port: number): Promise<RedisClusterNode> {
-    const config: RedisClusterNodeClientOpts = {host, port};
-    let node = await this.startClientFromConfig(config);
-    node = this.router.mergeNode(node);
-    return node;
+    return await this.startClientFromNode(node);
   }
 
   /** When route table is created, it creates clients for each node. */
@@ -181,9 +173,9 @@ export class RedisCluster implements Printable {
     const config: RedisClusterNodeClientOpts = {host, port: node.port};
     if (node.tls) config.tls = true;
     try {
-      const tmp = await withTimeout(5000, this.startClientFromConfig(config, node.id));
-      const client = tmp.client!;
-      return node.client = client;
+      const [client] = await withTimeout(5000, this.startClientFromConfig(config));
+      this.clients.set(node.id, client);
+      return client;
     } catch (error) {
       if (error instanceof Error && error.message === 'TIMEOUT')
         return await this.startClientFromNode(node, hostIndex + 1);
@@ -192,7 +184,7 @@ export class RedisCluster implements Printable {
   }
 
   /** When cluster client boots it creates nodes from seed configs. */
-  protected async startClientFromConfig(config: RedisClusterNodeClientOpts, id?: string): Promise<RedisClusterNode> {
+  protected async startClientFromConfig(config: RedisClusterNodeClientOpts, loadId?: boolean): Promise<[client: RedisClusterNodeClient, id: string]> {
     const conf = {
       ...this.opts.connectionConfig,
       ...config,
@@ -200,14 +192,11 @@ export class RedisCluster implements Printable {
     const client = this.createClient(conf);
     client.start();
     const {user, pwd} = conf;
-    const response = await Promise.all([
-      client.hello(3, pwd, user),
-      id ? Promise.resolve() : client.clusterMyId(),
+    const [, id = ''] = await Promise.all([
+      await client.hello(3, pwd, user),
+      loadId ? client.clusterMyId() : Promise.resolve(),
     ]);
-    id = id || response[1] as string;
-    const node = new RedisClusterNode(id, client.port, [client.host], !!conf.tls);
-    node.client = client;
-    return node;
+    return [client, id];
   }
 
   protected createClient(conf: RedisClusterNodeClientOpts): RedisClusterNodeClient {
@@ -221,11 +210,17 @@ export class RedisCluster implements Printable {
 
   // ----------------------------------------------------------- Client picking
 
-  protected async getRedirectNode(host: string, port: number): Promise<RedisClusterNode> {
+  public getClient(nodeId: string): RedisClusterNodeClient | undefined {
+    return this.clients.get(nodeId);
+  }
+
+  protected async getRedirectClient(host: string, port: number, oldClient: RedisClusterNodeClient): Promise<RedisClusterNodeClient> {
     const node = this.router.getNodeByEndpoint(host, port);
-    if (!node) return await this.startClientFromOrphanRedirect(host, port);
-    this.ensureNodeHasClient(node);
-    return node;
+    if (node) return await this.ensureNodeHasClient(node);
+    await this.router.rebuild(oldClient);
+    const node2 = this.router.getNodeByEndpoint(host, port);
+    if (!node2) throw new Error('NO_NODE');
+    return await this.ensureNodeHasClient(node2);
   }
 
   protected getAnyNode(): RedisClusterNode {
@@ -234,22 +229,23 @@ export class RedisCluster implements Printable {
     throw new Error('NO_NODE');
   }
 
-  protected async getAnyNodeOrSeed(): Promise<RedisClusterNode> {
+  protected async getAnyClientOrSeedClient(): Promise<RedisClusterNodeClient> {
     const node = this.router.getRandomNode();
-    if (node) return node;
+    if (node) return await this.ensureNodeHasClient(node);
     const seeds = this.opts.seeds;
     const seed = seeds[Math.floor(Math.random() * seeds.length)];
-    return this.startClientFromConfig(seed);
+    const [client] = await this.startClientFromConfig(seed);
+    return client;
   }
 
-  public async getNodeForKey(key: string, write: boolean): Promise<RedisClusterNode> {
-    if (!key) return await this.getAnyNodeOrSeed();
+  public async getClientForKey(key: string, write: boolean): Promise<RedisClusterNodeClient> {
+    if (!key) return await this.getAnyClientOrSeedClient();
     const slot = calculateSlot(key);
     await this.whenRouterReady();
     const router = this.router;
     const node = write ? router.getMasterNodeForSlot(slot) : router.getRandomReplicaNodeForSlot(slot);
-    if (node) return node;
-    return await this.getAnyNodeOrSeed();
+    if (node) return await this.ensureNodeHasClient(node);
+    return await this.getAnyClientOrSeedClient();
   }
 
 
@@ -268,8 +264,7 @@ export class RedisCluster implements Printable {
         if (!host) throw new Error('NO_HOST');
         const port = redirect[1];
         if (port === client.port && host === client.host) throw new Error('SELF_REDIRECT');
-        const redirectNode = await this.getRedirectNode(host, port);
-        const nextClient = redirectNode.client ?? await this.ensureNodeHasClient(redirectNode);
+        const nextClient = await this.getRedirectClient(host, port, client);
         const next = RedisClusterCall.redirect(call, nextClient, RedirectType.MOVED);
         return await this.__call(next);
       }
@@ -285,11 +280,8 @@ export class RedisCluster implements Printable {
     cmd = cmd.toUpperCase();
     const isWrite = commands.write.has(cmd);
     const key = call.key || (args[1] + '') || '';
-    const node = await this.getNodeForKey(key, isWrite);
-    if (!node.client) await this.ensureNodeHasClient(node);
-    call.client = node.client!;
-    console.log(this + '');
-    console.log(node.client + '');
+    const client = await this.getClientForKey(key, isWrite);
+    call.client = client;
     return await this.__call(call);
   }
 
