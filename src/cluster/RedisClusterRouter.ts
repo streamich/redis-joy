@@ -2,8 +2,10 @@ import {AvlMap} from 'json-joy/es2020/util/trees/avl/AvlMap';
 import {RedisClusterSlotRange} from './RedisClusterSlotRange';
 import {RedisClusterNode} from './RedisClusterNode';
 import {NodeHealth, NodeRole} from './constants';
+import {printTree} from 'json-joy/es2020/util/print/printTree';
+import type {Printable} from 'json-joy/es2020/util/print/types';
 
-export class RedisClusterRouter {
+export class RedisClusterRouter implements Printable {
   /** Map of slots ordered by slot end (max) value. */
   protected readonly ranges = new AvlMap<number, RedisClusterSlotRange>();
 
@@ -118,5 +120,14 @@ export class RedisClusterRouter {
     for (const client of this.byId.values())
       if (i++ === index) return client;
     return;
+  }
+
+
+  // ---------------------------------------------------------------- Printable
+
+  public toString(tab?: string): string {
+    return 'router' + printTree(tab, [
+      tab => this.ranges.toString(tab),
+    ]);
   }
 }

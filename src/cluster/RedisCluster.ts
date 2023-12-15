@@ -10,6 +10,8 @@ import {isMovedError, parseMovedError} from './errors';
 import {RedisClusterNodeClient, RedisClusterNodeClientOpts} from './RedisClusterNodeClient';
 import {RedirectType} from './constants';
 import {withTimeout} from '../util/timeout';
+import {printTree} from 'json-joy/es2020/util/print/printTree';
+import type {Printable} from 'json-joy/es2020/util/print/types';
 import type {CmdOpts} from '../node';
 
 const calculateSlot = require('cluster-key-slot');
@@ -41,7 +43,7 @@ export interface RedisClusterOpts extends RedisClientCodecOpts {
   // maxRedirects?: number;
 }
 
-export class RedisCluster {
+export class RedisCluster implements Printable {
   protected readonly encoder: RespEncoder;
   protected readonly decoder: RespStreamingDecoder;
   protected readonly router = new RedisClusterRouter();
@@ -250,6 +252,7 @@ export class RedisCluster {
     return await this.getAnyNodeOrSeed();
   }
 
+
   // -------------------------------------------------------- Command execution
 
   protected async __call(call: RedisClusterCall): Promise<unknown> {
@@ -258,7 +261,7 @@ export class RedisCluster {
       return await client.call(call);
     } catch (error) {
       if (isMovedError(error)) {
-        console.log('MOVED');
+        console.log('MOVED', error);
         this.scheduleRoutingTableRebuild();
         const redirect = parseMovedError((error as Error).message);
         let host = redirect[0] || client.host;
@@ -285,6 +288,8 @@ export class RedisCluster {
     const node = await this.getNodeForKey(key, isWrite);
     if (!node.client) await this.ensureNodeHasClient(node);
     call.client = node.client!;
+    console.log(this + '');
+    console.log(node.client + '');
     return await this.__call(call);
   }
 
@@ -297,6 +302,15 @@ export class RedisCluster {
       if (opts.maxRedirects) call.maxRedirects = opts.maxRedirects;
     }
     return await this.call(call);
+  }
+
+
+  // ---------------------------------------------------------------- Printable
+
+  public toString(tab?: string): string {
+    return 'cluster' + printTree(tab, [
+      tab => this.router.toString(tab),
+    ]);
   }
 }
 

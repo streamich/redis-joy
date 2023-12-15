@@ -1,6 +1,8 @@
 import * as tls from 'tls';
 import * as net from 'net';
 import {ReconnectingSocket, RedisClient} from '../node';
+import {printTree} from 'json-joy/es2020/util/print/printTree';
+import type {Printable} from 'json-joy/es2020/util/print/types';
 import type {RedisClientCodecOpts} from '../types';
 import type {RedisClusterShardsResponse} from './types';
 
@@ -19,7 +21,7 @@ export interface RedisClusterNodeClientOpts {
   secureContext?: tls.SecureContextOptions;
 }
 
-export class RedisClusterNodeClient extends RedisClient {
+export class RedisClusterNodeClient extends RedisClient implements Printable {
   /** Hostname of the Redis node. */
   public readonly host: string;
   /** Port of the Redis node. */
@@ -62,5 +64,15 @@ export class RedisClusterNodeClient extends RedisClient {
 
   public clusterShards(): Promise<RedisClusterShardsResponse> {
     return this.cmd(['CLUSTER', 'SHARDS'], {utf8Res: true}) as Promise<RedisClusterShardsResponse>;
+  }
+
+
+  // ---------------------------------------------------------------- Printable
+
+  public toString(tab?: string): string {
+    return 'client' + printTree(tab, [
+      tab => `host: ${this.host}`,
+      tab => `port: ${this.port}`,
+    ]);
   }
 }

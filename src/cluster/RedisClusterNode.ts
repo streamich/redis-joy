@@ -1,4 +1,6 @@
 import {NodeHealth, NodeRole} from "./constants";
+import {printTree} from 'json-joy/es2020/util/print/printTree';
+import type {Printable} from 'json-joy/es2020/util/print/types';
 import type {RedisClusterShardsResponseNode} from "./types";
 import type {RedisClusterNodeClient} from "./RedisClusterNodeClient";
 
@@ -9,7 +11,7 @@ const annotate = (node: RedisClusterNode, nodeInfo: RedisClusterShardsResponseNo
   node.health = health === 'online' ? NodeHealth.ONLINE : health === 'failed' ? NodeHealth.FAILED : NodeHealth.LOADING;
 };
 
-export class RedisClusterNode {
+export class RedisClusterNode implements Printable {
   public static fromNodeInfo = (nodeInfo: RedisClusterShardsResponseNode, extraHost: string = ''): RedisClusterNode => {
     const id = nodeInfo.id + '';
     const port = Number(nodeInfo.port ? nodeInfo.port : nodeInfo['tls-port']);
@@ -50,5 +52,21 @@ export class RedisClusterNode {
     this.port = port;
     this.hosts = hosts;
     this.tls = tls;
+  }
+
+
+  // ---------------------------------------------------------------- Printable
+
+  public toString(tab?: string): string {
+    return 'node' + printTree(tab, [
+      tab => `id: ${this.id}`,
+      tab => `port: ${this.port}`,
+      tab => `hosts: ${this.hosts.join(', ')}`,
+      tab => `tls: ${this.tls}`,
+      tab => `role: ${this.role}`,
+      tab => `replicationOffset: ${this.replicationOffset}`,
+      tab => `health: ${this.health}`,
+      this.client ? (tab => `${this.client?.toString(tab)}`) : null,
+    ]);
   }
 }
