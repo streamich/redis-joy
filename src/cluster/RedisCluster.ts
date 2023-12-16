@@ -97,8 +97,12 @@ export class RedisCluster implements Printable {
       seed = seed % seeds.length;
       const seedConfig = seeds[seed];
       const [client, id] = await this.startClientFromConfig(seedConfig);
-      if (this.stopped) return;
-      await this.router.rebuild(client, id);
+      try {
+        if (this.stopped) return;
+        await this.router.rebuild(client, id);
+      } finally{
+        client.stop();
+      }
       if (this.stopped) return;
       this.initialTableBuildAttempt = 0;
       this.onRouter.emit();
