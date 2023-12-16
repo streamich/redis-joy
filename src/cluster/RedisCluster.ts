@@ -282,7 +282,7 @@ export class RedisCluster implements Printable {
     if (typeof cmd !== 'string' || !cmd) throw new Error('INVALID_COMMAND');
     cmd = cmd.toUpperCase();
     const isWrite = commands.write.has(cmd);
-    const key = call.key || (args[1] + '') || '';
+    const key = call.key || (args.length > 1 ? args[1] + '' : '') || '';
     const client = await this.getClientForKey(key, isWrite);
     call.client = client;
     return await this.__call(call);
