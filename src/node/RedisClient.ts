@@ -2,8 +2,9 @@ import {Defer} from 'thingies/es2020/Defer';
 import {RespEncoder} from 'json-joy/es2020/json-pack/resp/RespEncoder';
 import {RespStreamingDecoder} from 'json-joy/es2020/json-pack/resp/RespStreamingDecoder';
 import {ReconnectingSocket} from './ReconnectingSocket';
-import {RedisClientCodecOpts} from '../types';
 import {RedisCall, callNoRes} from './RedisCall';
+import type {Cmd, MultiCmd, RedisClientCodecOpts} from '../types';
+import {isMultiCmd} from '../util/commands';
 
 export interface RedisClientOpts extends RedisClientCodecOpts {
   socket: ReconnectingSocket;
@@ -49,7 +50,11 @@ export class RedisClient {
       const encoder = this.encoder;
       for (let i = 0; i < length; i++) {
         const call = requests[i];
-        encoder.writeCmd(call.args);
+        const cmd = call.args;
+        if (isMultiCmd(cmd)) {
+          const length = cmd.length;
+          for (let i = 0; i < length; i++) encoder.writeCmd(cmd[i]);
+        } else encoder.writeCmd(cmd);
       }
       const buf = encoder.writer.flush();
       // console.log(Buffer.from(buf).toString());
@@ -124,7 +129,7 @@ export class RedisClient {
     return noResponse ? void 0 : call.response.promise;
   }
 
-  public async cmd(args: unknown[], opts?: CmdOpts): Promise<unknown> {
+  public async cmd(args: Cmd | MultiCmd, opts?: CmdOpts): Promise<unknown> {
     const call = new RedisCall(args);
     if (opts) {
       if (opts.utf8Res) call.utf8Res = true;
@@ -139,7 +144,7 @@ export class RedisClient {
     this.scheduleWrite();
   }
 
-  public cmdFnF(args: unknown[]): void {
+  public cmdFnF(args: Cmd | MultiCmd): void {
     this.callFnf(callNoRes(args));
   }
 
@@ -149,14 +154,15 @@ export class RedisClient {
   /** Authenticate and negotiate protocol version. */
   public async hello(protocol: 2 | 3, pwd?: string, usr: string = ''): Promise<void> {
     try {
-      const args = pwd ? ['HELLO', protocol, 'AUTH', usr, pwd] : ['HELLO', protocol];
+      const args: Cmd = pwd ? ['HELLO', protocol, 'AUTH', usr, pwd] : ['HELLO', protocol];
       await this.call(new RedisCall(args));
       this.protocol = protocol;
     } catch (error) {
-      
-      // This is likely protocol switching error. Try again with protocol 2.
-      const args = usr ? ['AUTH', usr, pwd] : ['AUTH', pwd];
-      await this.call(new RedisCall(args));
+      if (pwd || usr) {
+        // This is likely protocol switching error. Try again with protocol 2.
+        const args: Cmd = usr ? ['AUTH', usr, pwd || ''] : ['AUTH', pwd || ''];
+        await this.call(new RedisCall(args));
+      }
     }
   }
 }

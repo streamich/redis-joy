@@ -2,7 +2,7 @@ import {FanOut} from 'thingies/es2020/fanout';
 import {RespEncoder} from 'json-joy/es2020/json-pack/resp';
 import {RespStreamingDecoder} from 'json-joy/es2020/json-pack/resp/RespStreamingDecoder';
 import * as commands from '../generated/commands';
-import {PartialExcept, RedisClientCodecOpts} from '../types';
+import {Cmd, MultiCmd, PartialExcept, RedisClientCodecOpts} from '../types';
 import {RedisClusterRouter} from './RedisClusterRouter';
 import {RedisClusterNode} from './RedisClusterNode';
 import {RedisClusterCall} from './RedisClusterCall';
@@ -295,7 +295,7 @@ export class RedisCluster implements Printable {
     return await this.__call(call);
   }
 
-  public async cmd(args: unknown[], opts?: ClusterCmdOpts): Promise<unknown> {
+  public async cmd(args: Cmd | MultiCmd, opts?: ClusterCmdOpts): Promise<unknown> {
     const call = new RedisClusterCall(args);
     if (opts) {
       if (opts.utf8Res) call.utf8Res = true;

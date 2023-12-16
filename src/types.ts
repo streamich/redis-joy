@@ -7,3 +7,7 @@ export interface RedisClientCodecOpts {
   encoder: RespEncoder;
   decoder: RespStreamingDecoder;
 }
+
+export type MultiCmd = Cmd[];
+export type Cmd = Arg[]
+export type Arg = string | number | Buffer;

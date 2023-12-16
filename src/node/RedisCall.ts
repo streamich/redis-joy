@@ -1,6 +1,7 @@
 import {Defer} from "thingies/es2020/Defer";
+import type {Cmd, MultiCmd} from "../types";
 
-export const callNoRes = (args: unknown[]) => {
+export const callNoRes = (args: Cmd | MultiCmd) => {
   const call = new RedisCall(args);
   call.noRes = true;
   return call;
@@ -23,5 +24,5 @@ export class RedisCall {
 
   public readonly response = new Defer<unknown>();
 
-  constructor(public readonly args: unknown[]) {}
+  constructor(public readonly args: Cmd | MultiCmd) {}
 }
