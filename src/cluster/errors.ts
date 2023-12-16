@@ -10,6 +10,16 @@ export const isMovedError = (error: unknown): boolean => {
   return false;
 };
 
+export const isAskError = (error: unknown): boolean => {
+  if (error instanceof Error) {
+    const msg = error.message;
+    return msg.charCodeAt(0) === 65 && // A
+      msg.charCodeAt(1) === 83 && // S
+      msg.charCodeAt(2) === 75; // K
+  }
+  return false;
+};
+
 const movedErrorRegex = /^MOVED [0-9]+ ([^:]*):([0-9]+)\s*$/;
 export const parseMovedError = (message: string): [endpoint: string, port: number] => {
   const match = movedErrorRegex.exec(message);

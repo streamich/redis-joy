@@ -6,7 +6,7 @@ import {PartialExcept, RedisClientCodecOpts} from '../types';
 import {RedisClusterRouter} from './RedisClusterRouter';
 import {RedisClusterNode} from './RedisClusterNode';
 import {RedisClusterCall} from './RedisClusterCall';
-import {isMovedError, parseMovedError} from './errors';
+import {isAskError, isMovedError, parseMovedError} from './errors';
 import {RedisClusterNodeClient, RedisClusterNodeClientOpts} from './RedisClusterNodeClient';
 import {RedirectType} from './constants';
 import {withTimeout} from '../util/timeout';
@@ -270,8 +270,12 @@ export class RedisCluster implements Printable {
         const nextClient = await this.getRedirectClient(host, port, client);
         const next = RedisClusterCall.redirect(call, nextClient, RedirectType.MOVED);
         return await this.__call(next);
+      } else if (isAskError(error)) {
+        const next = RedisClusterCall.retry(call, client);
+        const delay = 50 * 2 ** (next.retry - 1);
+        await new Promise((resolve) => setTimeout(resolve, delay));
+        return await this.__call(next);
       }
-      // TODO: Handle ASK redirection.
       throw error;
     }
   }
