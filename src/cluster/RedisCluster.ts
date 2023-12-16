@@ -14,6 +14,7 @@ import {printTree} from 'json-joy/es2020/util/print/printTree';
 import {getSlotAny} from '../util/slots';
 import type {Printable} from 'json-joy/es2020/util/print/types';
 import type {CmdOpts} from '../node';
+import {isMultiCmd} from '../util/commands';
 
 export interface RedisClusterOpts extends RedisClientCodecOpts {
   /**
@@ -285,10 +286,17 @@ export class RedisCluster implements Printable {
   public async call(call: RedisClusterCall): Promise<unknown> {
     const args = call.args;
     let cmd: string = args[0] as string;
-    if (typeof cmd !== 'string' || !cmd) throw new Error('INVALID_COMMAND');
-    cmd = cmd.toUpperCase();
-    const isWrite = commands.write.has(cmd);
-    const key = call.key || (args.length > 1 ? args[1] + '' : '') || '';
+    const isMulti = isMultiCmd(args);
+    let isWrite: boolean = true;
+    let key: string = call.key;
+    if (isMulti) {
+      if (!key) throw new Error('NO_KEY');
+    } else {
+      if (typeof cmd !== 'string' || !cmd) throw new Error('INVALID_COMMAND');
+      cmd = cmd.toUpperCase();
+      isWrite = commands.write.has(cmd);
+      if (!key) key = (args.length > 1 ? args[1] + '' : '') || '';
+    }
     const client = await this.getClientForKey(key, isWrite);
     call.client = client;
     return await this.__call(call);
