@@ -52,6 +52,7 @@ export class RedisClient {
         encoder.writeCmd(call.args);
       }
       const buf = encoder.writer.flush();
+      // console.log(Buffer.from(buf).toString());
       this.socket.write(buf);
       requests.splice(0, length);
     } catch (error) {

@@ -100,7 +100,9 @@ export class RedisCluster implements Printable {
       try {
         if (this.stopped) return;
         await this.router.rebuild(client, id);
-      } finally{
+      } finally {
+        // Discard the seed client as some clusters always return MOVED errors
+        // from seed clients.
         client.stop();
       }
       if (this.stopped) return;
@@ -247,7 +249,7 @@ export class RedisCluster implements Printable {
     const slot = calculateSlot(key);
     await this.whenRouterReady();
     const router = this.router;
-    const node = write ? router.getMasterNodeForSlot(slot) : router.getRandomReplicaNodeForSlot(slot);
+    const node = write ? router.getMasterNodeForSlot(slot) : router.getRandomNodeForSlot(slot);
     if (node) return await this.ensureNodeHasClient(node);
     return await this.getAnyClientOrSeedClient();
   }
@@ -261,6 +263,7 @@ export class RedisCluster implements Printable {
       return await client.call(call);
     } catch (error) {
       if (isMovedError(error)) {
+        // console.error('MOVED', [client.host, client.port], error);
         this.scheduleRoutingTableRebuild();
         const redirect = parseMovedError((error as Error).message);
         let host = redirect[0] || client.host;
