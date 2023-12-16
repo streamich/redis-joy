@@ -78,6 +78,7 @@ export class RedisCluster implements Printable {
     this.isRebuildingRouteTable = false;
     this.routeTableRebuildRetry = 0;
     this.stopped = true;
+    this.clients.forEach((client) => client.stop());
   }
 
   // ---------------------------------------------- Build initial routing table
