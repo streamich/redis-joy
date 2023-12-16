@@ -38,9 +38,10 @@ export class RedisClusterRouter implements Printable {
     for (const slot of slots) {
       const range = new RedisClusterSlotRange(slot.slots[0], slot.slots[1], []);
       for (const nodeInfo of slot.nodes) {
-        const node = id && (nodeInfo.id === id)
-          ? RedisClusterNode.fromNodeInfo(this.cluster, nodeInfo)
-          : RedisClusterNode.fromNodeInfo(this.cluster, nodeInfo, client.host);
+        const node =
+          id && nodeInfo.id === id
+            ? RedisClusterNode.fromNodeInfo(this.cluster, nodeInfo)
+            : RedisClusterNode.fromNodeInfo(this.cluster, nodeInfo, client.host);
         this.setNode(node);
         range.nodes.push(node);
       }
@@ -123,17 +124,13 @@ export class RedisClusterRouter implements Printable {
     if (!size) return undefined;
     const index = Math.floor(Math.random() * size);
     let i = 0;
-    for (const client of this.byId.values())
-      if (i++ === index) return client;
+    for (const client of this.byId.values()) if (i++ === index) return client;
     return;
   }
-
 
   // ---------------------------------------------------------------- Printable
 
   public toString(tab?: string): string {
-    return 'router' + printTree(tab, [
-      tab => this.ranges.toString(tab),
-    ]);
+    return 'router' + printTree(tab, [(tab) => this.ranges.toString(tab)]);
   }
 }

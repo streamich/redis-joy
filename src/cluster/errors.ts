@@ -1,11 +1,13 @@
 export const isMovedError = (error: unknown): boolean => {
   if (error instanceof Error) {
     const msg = error.message;
-    return msg.charCodeAt(0) === 77 && // M
+    return (
+      msg.charCodeAt(0) === 77 && // M
       msg.charCodeAt(1) === 79 && // O
       msg.charCodeAt(2) === 86 && // V
       msg.charCodeAt(3) === 69 && // E
-      msg.charCodeAt(4) === 68; // D
+      msg.charCodeAt(4) === 68
+    ); // D
   }
   return false;
 };
@@ -13,9 +15,11 @@ export const isMovedError = (error: unknown): boolean => {
 export const isAskError = (error: unknown): boolean => {
   if (error instanceof Error) {
     const msg = error.message;
-    return msg.charCodeAt(0) === 65 && // A
+    return (
+      msg.charCodeAt(0) === 65 && // A
       msg.charCodeAt(1) === 83 && // S
-      msg.charCodeAt(2) === 75; // K
+      msg.charCodeAt(2) === 75
+    ); // K
   }
   return false;
 };

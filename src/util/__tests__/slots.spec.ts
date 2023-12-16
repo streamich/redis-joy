@@ -19,13 +19,7 @@ describe('getSlot', () => {
       const pre = randomBytes(Math.round(Math.random() * 10));
       const mid = randomBytes(Math.round(Math.random() * 10));
       const post = randomBytes(Math.round(Math.random() * 10));
-      const buf = Buffer.concat([
-        pre,
-        Buffer.from('{'),
-        mid,
-        Buffer.from('}'),
-        post,
-      ]);
+      const buf = Buffer.concat([pre, Buffer.from('{'), mid, Buffer.from('}'), post]);
       const slot = getSlot(buf);
       const slot2 = calculateSlot(buf);
       expect(slot).toEqual(slot2);

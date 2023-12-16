@@ -1,6 +1,7 @@
 // npx ts-node src/demo-cluster.ts
 
-import {ClusterCmdOpts, RedisCluster} from "./cluster/RedisCluster";
+import {ClusterCmdOpts, RedisCluster} from './cluster/RedisCluster';
+import type {Cmd, MultiCmd} from './types';
 
 const main = async () => {
   // const host = 'localhost';
@@ -15,9 +16,7 @@ const main = async () => {
   const pwd = '7UAmqOMRcZ0KFZUfzze2KaWW8w0Fe8pP';
 
   const client = new RedisCluster({
-    seeds: [
-      {host, port},
-    ],
+    seeds: [{host, port}],
     connectionConfig: {
       user,
       pwd,
@@ -30,7 +29,7 @@ const main = async () => {
 
   client.start();
 
-  const exec = async (args: unknown[], opts?: ClusterCmdOpts) => {
+  const exec = async (args: Cmd | MultiCmd, opts?: ClusterCmdOpts) => {
     try {
       const res = await client.cmd(args, opts);
       console.log('->', args);
@@ -41,14 +40,26 @@ const main = async () => {
     }
   };
 
-  await exec(['SET', 'foo', 1], {key: 'foo'});
-  // await exec(['SET', 'foo', 2], {key: 'foo'});
-  // await exec(['SET', 'foo', 2], {key: 'foo'});
-  // await exec(['SET', 'foo', 2], {key: 'foo'});
-  await exec(['SET', 'bar', 2], {key: 'bar'});
-  // await exec(['SET', 'baz', 3], {key: 'baz'});
-  // await exec(['SET', 'qux', 4], {key: 'qux'});
-  // await exec(['SET', 'quux', 5], {key: 'quux'});
+  await exec(['SET', 'foo', 1]);
+  await exec(['SET', '{foo}bar', 'foobar']);
+  await exec(['SET', 'bar', 2]);
+  await exec(['SET', 'baz', 3]);
+  await exec(['SET', 'qux', 4]);
+  await exec(['SET', 'quux', 5], {key: 'quux'});
+
+  await exec(['INCR', 'foo']);
+
+  await Promise.all([
+    exec(['GET', 'foo'], {utf8Res: true}),
+    exec(['GET', 'bar']),
+    exec(['GET', 'baz']),
+    exec(['GET', 'qux']),
+    exec(['GET', 'quux']),
+  ]);
+
+  await exec([['MULTI'], ['SET', 'foo', 1], ['SET', '{foo}bar', 2], ['SET', 'baz{foo}', 3], ['EXEC']], {
+    key: '{foo}bar',
+  });
 };
 
 main().catch((err) => {

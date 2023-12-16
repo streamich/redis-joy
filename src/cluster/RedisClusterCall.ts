@@ -1,6 +1,6 @@
-import {RedisCall} from "../node";
-import {RedirectType} from "./constants";
-import type {RedisClusterNodeClient} from "./RedisClusterNodeClient";
+import {RedisCall} from '../node';
+import {RedirectType} from './constants';
+import type {RedisClusterNodeClient} from './RedisClusterNodeClient';
 
 /**
  * Represents a single Redis request/response command call.

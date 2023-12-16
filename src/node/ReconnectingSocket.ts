@@ -93,7 +93,7 @@ export class ReconnectingSocket {
   private readonly handleDrain = () => this.onDrain.emit();
   private readonly handleError = (err: Error) => this.onError.emit(err);
   private readonly handleClose = () => {
-    this.socket = undefined
+    this.socket = undefined;
     if (this.stopped) return;
     this.retry();
   };
@@ -104,7 +104,7 @@ export class ReconnectingSocket {
   public start() {
     this.stopped = false;
     if (this.socket) throw new Error('ALREADY_CONNECTED');
-    const socket = this.socket = this.opts.createSocket();
+    const socket = (this.socket = this.opts.createSocket());
     socket.allowHalfOpen = false;
     socket.setNoDelay(true);
     socket.on('connect', this.handleConnect);
@@ -137,12 +137,13 @@ export class ReconnectingSocket {
       this.retryTimer = undefined;
       this.start();
     }, retryTimeout);
-    if (this.reffed) this.retryTimer.ref(); else this.retryTimer.unref();
+    if (this.reffed) this.retryTimer.ref();
+    else this.retryTimer.unref();
   }
 
   protected getRetryTimeout(): number {
     const {minTimeout, maxTimeout} = this.opts;
-    const timeout = minTimeout * (2 ** Math.min(this.retryCount, 12));
+    const timeout = minTimeout * 2 ** Math.min(this.retryCount, 12);
     const timeoutCapped = Math.max(Math.min(timeout, maxTimeout), minTimeout);
     const jitter = Math.round((Math.random() - 0.5) * timeoutCapped * 0.2);
     return Math.max(timeoutCapped + jitter, minTimeout);

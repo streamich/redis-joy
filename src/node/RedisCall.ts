@@ -1,5 +1,5 @@
-import {Defer} from "thingies/es2020/Defer";
-import type {Cmd, MultiCmd} from "../types";
+import {Defer} from 'thingies/es2020/Defer';
+import type {Cmd, MultiCmd} from '../types';
 
 export const callNoRes = (args: Cmd | MultiCmd) => {
   const call = new RedisCall(args);

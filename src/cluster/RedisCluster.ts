@@ -54,7 +54,6 @@ export class RedisCluster implements Printable {
     this.decoder = opts.decoder ?? new RespStreamingDecoder();
   }
 
-
   // ------------------------------------------------------------------- Events
 
   /** Emitted on unexpected and asynchronous errors. */
@@ -62,7 +61,6 @@ export class RedisCluster implements Printable {
 
   /** Emitted each time router table is rebuilt. */
   public readonly onRouter = new FanOut<void>();
-
 
   // ---------------------------------------------------- Life cycle management
 
@@ -81,7 +79,6 @@ export class RedisCluster implements Printable {
     this.routeTableRebuildRetry = 0;
     this.stopped = true;
   }
-
 
   // ---------------------------------------------- Build initial routing table
 
@@ -125,7 +122,6 @@ export class RedisCluster implements Printable {
     });
   }
 
-
   // ----------------------------------------------------- Router table rebuild
 
   private isRebuildingRouteTable: boolean = false;
@@ -162,7 +158,6 @@ export class RedisCluster implements Printable {
     // await this.router.rebuild(client);
   }
 
-
   // ------------------------------------------------------ Client construction
 
   protected async ensureNodeHasClient(node: RedisClusterNode): Promise<RedisClusterNodeClient> {
@@ -190,7 +185,10 @@ export class RedisCluster implements Printable {
   }
 
   /** When cluster client boots it creates nodes from seed configs. */
-  protected async startClientFromConfig(config: RedisClusterNodeClientOpts, loadId?: boolean): Promise<[client: RedisClusterNodeClient, id: string]> {
+  protected async startClientFromConfig(
+    config: RedisClusterNodeClientOpts,
+    loadId?: boolean,
+  ): Promise<[client: RedisClusterNodeClient, id: string]> {
     const conf = {
       ...this.opts.connectionConfig,
       ...config,
@@ -213,14 +211,17 @@ export class RedisCluster implements Printable {
     return new RedisClusterNodeClient(conf, codec);
   }
 
-
   // ----------------------------------------------------------- Client picking
 
   public getClient(nodeId: string): RedisClusterNodeClient | undefined {
     return this.clients.get(nodeId);
   }
 
-  protected async getRedirectClient(host: string, port: number, oldClient: RedisClusterNodeClient): Promise<RedisClusterNodeClient> {
+  protected async getRedirectClient(
+    host: string,
+    port: number,
+    oldClient: RedisClusterNodeClient,
+  ): Promise<RedisClusterNodeClient> {
     const node = this.router.getNodeByEndpoint(host, port);
     if (node) return await this.ensureNodeHasClient(node);
     await this.router.rebuild(oldClient);
@@ -253,7 +254,6 @@ export class RedisCluster implements Printable {
     if (node) return await this.ensureNodeHasClient(node);
     return await this.getAnyClientOrSeedClient();
   }
-
 
   // -------------------------------------------------------- Command execution
 
@@ -313,13 +313,10 @@ export class RedisCluster implements Printable {
     return await this.call(call);
   }
 
-
   // ---------------------------------------------------------------- Printable
 
   public toString(tab?: string): string {
-    return 'cluster' + printTree(tab, [
-      tab => this.router.toString(tab),
-    ]);
+    return 'cluster' + printTree(tab, [(tab) => this.router.toString(tab)]);
   }
 }
 

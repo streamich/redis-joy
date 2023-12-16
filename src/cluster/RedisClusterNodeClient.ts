@@ -31,15 +31,17 @@ export class RedisClusterNodeClient extends RedisClient implements Printable {
     super({
       socket: new ReconnectingSocket({
         createSocket: opts.tls
-          ? () => tls.connect({
-            host,
-            port,
-            ...opts.secureContext,
-          })
-          : () => net.connect({
-            host,
-            port,
-          }),
+          ? () =>
+              tls.connect({
+                host,
+                port,
+                ...opts.secureContext,
+              })
+          : () =>
+              net.connect({
+                host,
+                port,
+              }),
       }),
       encoder: codec.encoder,
       decoder: codec.decoder,
@@ -48,7 +50,6 @@ export class RedisClusterNodeClient extends RedisClient implements Printable {
     this.port = port;
   }
 
-
   // -------------------------------------------------------- Built-in commands
 
   public async clusterMyId(): Promise<string> {
@@ -56,7 +57,7 @@ export class RedisClusterNodeClient extends RedisClient implements Printable {
     // redis.com returns "ERR unknown subcommand 'myid'". Instead, we parse
     // `CLUSTER NODES` output.
     const reg = /^([^ ]+) .+myself/gm;
-    const nodes = await this.cmd(['CLUSTER', 'NODES']) as string;
+    const nodes = (await this.cmd(['CLUSTER', 'NODES'])) as string;
     const match = reg.exec(nodes);
     if (!match) throw new Error('Failed to parse CLUSTER NODES output.');
     return match[1];
@@ -66,13 +67,9 @@ export class RedisClusterNodeClient extends RedisClient implements Printable {
     return this.cmd(['CLUSTER', 'SHARDS'], {utf8Res: true}) as Promise<RedisClusterShardsResponse>;
   }
 
-
   // ---------------------------------------------------------------- Printable
 
   public toString(tab?: string): string {
-    return 'client' + printTree(tab, [
-      tab => `host: ${this.host}`,
-      tab => `port: ${this.port}`,
-    ]);
+    return 'client' + printTree(tab, [(tab) => `host: ${this.host}`, (tab) => `port: ${this.port}`]);
   }
 }

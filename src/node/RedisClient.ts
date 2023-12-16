@@ -15,20 +15,18 @@ export class RedisClient {
   protected protocol: 2 | 3 = 2;
 
   constructor(opts: RedisClientOpts) {
-    const socket = this.socket = opts.socket;
+    const socket = (this.socket = opts.socket);
     this.encoder = opts.encoder;
-    const decoder = this.decoder = opts.decoder;
+    const decoder = (this.decoder = opts.decoder);
     socket.onData.listen((data) => {
       decoder.push(data);
       this.scheduleRead();
     });
   }
 
-  
   // ------------------------------------------------------------------- Events
 
   public readonly onProtocolError = new Defer<Error>();
-
 
   // ------------------------------------------------------------ Socket writes
 
@@ -66,7 +64,6 @@ export class RedisClient {
     }
   };
 
-
   // ------------------------------------------------------------- Socket reads
 
   protected readonly decoder: RespStreamingDecoder;
@@ -92,7 +89,8 @@ export class RedisClient {
           const msg = decoder.read();
           if (msg === undefined) break;
           const res = call.response;
-          if (msg instanceof Error) res.reject(msg); else res.resolve(msg);
+          if (msg instanceof Error) res.reject(msg);
+          else res.resolve(msg);
         } else {
           // TODO: Use skipping here...
           decoder.tryUtf8 = false;
@@ -107,7 +105,6 @@ export class RedisClient {
     }
   };
 
-
   // -------------------------------------------------------------- Life cycles
 
   public start() {
@@ -117,7 +114,6 @@ export class RedisClient {
   public stop() {
     this.socket.stop();
   }
-
 
   // -------------------------------------------------------- Command execution
 
@@ -147,7 +143,6 @@ export class RedisClient {
   public cmdFnF(args: Cmd | MultiCmd): void {
     this.callFnf(callNoRes(args));
   }
-
 
   // -------------------------------------------------------- Built-in commands
 
