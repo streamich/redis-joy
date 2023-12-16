@@ -42,12 +42,12 @@
     "tslib": "2"
   },
   "dependencies": {
-    "cluster-key-slot": "^1.1.2",
     "json-joy": "^11.22.0",
     "thingies": "^1.15.0"
   },
   "devDependencies": {
     "@types/jest": "^29.5.11",
+    "cluster-key-slot": "^1.1.2",
     "commands": "https://github.com/streamich/commands#4321d5d40473c48fadf49fd99662032eac9b855b",
     "jest": "^29.7.0",
     "prettier": "^3.1.1",

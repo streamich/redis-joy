@@ -11,10 +11,9 @@ import {RedisClusterNodeClient, RedisClusterNodeClientOpts} from './RedisCluster
 import {RedirectType} from './constants';
 import {withTimeout} from '../util/timeout';
 import {printTree} from 'json-joy/es2020/util/print/printTree';
+import {getSlotAny} from '../util/slots';
 import type {Printable} from 'json-joy/es2020/util/print/types';
 import type {CmdOpts} from '../node';
-
-const calculateSlot = require('cluster-key-slot');
 
 export interface RedisClusterOpts extends RedisClientCodecOpts {
   /**
@@ -246,7 +245,7 @@ export class RedisCluster implements Printable {
 
   public async getClientForKey(key: string, write: boolean): Promise<RedisClusterNodeClient> {
     if (!key) return await this.getAnyClientOrSeedClient();
-    const slot = calculateSlot(key);
+    const slot = getSlotAny(key);
     await this.whenRouterReady();
     const router = this.router;
     const node = write ? router.getMasterNodeForSlot(slot) : router.getRandomNodeForSlot(slot);
