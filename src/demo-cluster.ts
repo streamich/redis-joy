@@ -1,5 +1,7 @@
 // npx ts-node src/demo-cluster.ts
 
+/* tslint:disable no-console */
+
 import {ClusterCmdOpts, RedisCluster} from './cluster/RedisCluster';
 import type {Cmd, MultiCmd} from './types';
 

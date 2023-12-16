@@ -266,7 +266,7 @@ export class RedisCluster implements Printable {
         // console.error('MOVED', [client.host, client.port], error);
         this.scheduleRoutingTableRebuild();
         const redirect = parseMovedError((error as Error).message);
-        let host = redirect[0] || client.host;
+        const host = redirect[0] || client.host;
         if (!host) throw new Error('NO_HOST');
         const port = redirect[1];
         if (port === client.port && host === client.host) throw new Error('SELF_REDIRECT');
