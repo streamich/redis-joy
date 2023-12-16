@@ -34,6 +34,7 @@
     "build:commands": "ts-node scripts/build-commands.ts",
     "jest": "node -r ts-node/register ./node_modules/.bin/jest",
     "test": "jest --maxWorkers 7",
+    "test:ci": "yarn jest --maxWorkers 3 --no-cache",
     "coverage": "yarn test --collectCoverage",
     "typedoc": "npx typedoc"
   },
