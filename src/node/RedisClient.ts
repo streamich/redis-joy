@@ -1,10 +1,11 @@
 import {RespEncoder} from 'json-joy/es2020/json-pack/resp/RespEncoder';
 import {RespStreamingDecoder} from 'json-joy/es2020/json-pack/resp/RespStreamingDecoder';
+import {RespPush} from 'json-joy/es2020/json-pack/resp/extensions';
 import {FanOut} from 'thingies/es2020/fanout';
 import {Defer} from 'thingies/es2020/Defer';
 import {ReconnectingSocket} from './ReconnectingSocket';
 import {RedisCall, callNoRes} from './RedisCall';
-import {isMultiCmd} from '../util/commands';
+import {isMultiCmd, isSubscribeAckResponse} from '../util/commands';
 import type {Cmd, MultiCmd, RedisClientCodecOpts} from '../types';
 import type {RedisHelloResponse} from './types';
 
@@ -45,6 +46,7 @@ export class RedisClient {
   public readonly whenReady = this.__whenReady.promise;
   public readonly onReady = new FanOut<void>();
   public readonly onError = new FanOut<Error | unknown>();
+  public readonly onPush = new FanOut<unknown>();
 
 
   // ------------------------------------------------------------ Socket writes
@@ -104,22 +106,28 @@ export class RedisClient {
       this.decodingTimer = undefined;
       const decoder = this.decoder;
       const responses = this.responses;
-      const length = responses.length;
       let i = 0;
-      for (; i < length; i++) {
+      while (true) {
         const call = responses[i];
-        if (call instanceof RedisCall) {
-          decoder.tryUtf8 = !!call.utf8Res;
-          const msg = decoder.read();
-          if (msg === undefined) break;
-          const res = call.response;
-          if (msg instanceof Error) res.reject(msg);
-          else res.resolve(msg);
-        } else {
-          decoder.tryUtf8 = false;
-          const msg = decoder.skip();
-          if (msg === undefined) break;
+        if (call) decoder.tryUtf8 = !!call.utf8Res;
+        const msg = decoder.read();
+        // console.log(msg);
+        if (msg === undefined) break;
+        if (msg instanceof RespPush) {
+          const val = msg.val;
+          if (isSubscribeAckResponse(val)) {
+            if (!call) throw new Error('UNEXPECTED_RESPONSE');
+            call.response.resolve(undefined);
+            i++;
+            continue;
+          }
+          this.onPush.emit(msg);
+          continue;
         }
+        if (!call) throw new Error('UNEXPECTED_RESPONSE');
+        const res = call.response;
+        if (msg instanceof Error) res.reject(msg); else res.resolve(msg);
+        i++;
       }
       if (i > 0) responses.splice(0, i);
     } catch (error) {

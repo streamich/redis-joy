@@ -21,6 +21,9 @@ const setupCluster: ClusterTestSetup = async () => {
   client.onError.listen((err) => {
     console.error('onError', err);
   });
+  client.onPush.listen((push) => {
+    console.log(push);
+  });
   client.start();  
   clients.push(client);
   await client.whenReady;
