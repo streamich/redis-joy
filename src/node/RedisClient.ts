@@ -3,8 +3,8 @@ import {RespEncoder} from 'json-joy/es2020/json-pack/resp/RespEncoder';
 import {RespStreamingDecoder} from 'json-joy/es2020/json-pack/resp/RespStreamingDecoder';
 import {ReconnectingSocket} from './ReconnectingSocket';
 import {RedisCall, callNoRes} from './RedisCall';
-import type {Cmd, MultiCmd, RedisClientCodecOpts} from '../types';
 import {isMultiCmd} from '../util/commands';
+import type {Cmd, MultiCmd, RedisClientCodecOpts} from '../types';
 
 export interface RedisClientOpts extends RedisClientCodecOpts {
   socket: ReconnectingSocket;
@@ -59,8 +59,8 @@ export class RedisClient {
       this.socket.write(buf);
       requests.splice(0, length);
     } catch (error) {
-      // this.onProtocolError.reject(error);
-      // TODO: Re-establish socket ...
+      this.onProtocolError.reject(error);
+      this.socket.reconnect();
     }
   };
 
@@ -92,16 +92,15 @@ export class RedisClient {
           if (msg instanceof Error) res.reject(msg);
           else res.resolve(msg);
         } else {
-          // TODO: Use skipping here...
           decoder.tryUtf8 = false;
-          const msg = decoder.read();
+          const msg = decoder.skip();
           if (msg === undefined) break;
         }
       }
       if (i > 0) responses.splice(0, i);
     } catch (error) {
-      // this.onProtocolError.reject(error);
-      // TODO: Re-establish socket ...
+      this.onProtocolError.reject(error);
+      this.socket.reconnect();
     }
   };
 

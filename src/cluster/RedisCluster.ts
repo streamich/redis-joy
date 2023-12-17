@@ -54,6 +54,7 @@ export class RedisCluster implements Printable {
     this.decoder = opts.decoder ?? new RespStreamingDecoder();
   }
 
+
   // ------------------------------------------------------------------- Events
 
   /** Emitted on unexpected and asynchronous errors. */
@@ -61,6 +62,7 @@ export class RedisCluster implements Printable {
 
   /** Emitted each time router table is rebuilt. */
   public readonly onRouter = new FanOut<void>();
+
 
   // ---------------------------------------------------- Life cycle management
 
@@ -80,6 +82,7 @@ export class RedisCluster implements Printable {
     this.stopped = true;
     this.clients.forEach((client) => client.stop());
   }
+
 
   // ---------------------------------------------- Build initial routing table
 
@@ -123,6 +126,7 @@ export class RedisCluster implements Printable {
     });
   }
 
+
   // ----------------------------------------------------- Router table rebuild
 
   private isRebuildingRouteTable: boolean = false;
@@ -159,6 +163,7 @@ export class RedisCluster implements Printable {
     // await this.router.rebuild(client);
   }
 
+
   // ------------------------------------------------------ Client construction
 
   protected async ensureNodeHasClient(node: RedisClusterNode): Promise<RedisClusterNodeClient> {
@@ -186,22 +191,26 @@ export class RedisCluster implements Printable {
   }
 
   /** When cluster client boots it creates nodes from seed configs. */
-  protected async startClientFromConfig(
-    config: RedisClusterNodeClientOpts,
-    loadId?: boolean,
-  ): Promise<[client: RedisClusterNodeClient, id: string]> {
+  protected async startClientFromConfig(config: RedisClusterNodeClientOpts): Promise<[client: RedisClusterNodeClient, id: string]> {
     const conf = {
       ...this.opts.connectionConfig,
       ...config,
     };
     const client = this.createClient(conf);
-    client.start();
-    const {user, pwd} = conf;
-    const [, id = ''] = await Promise.all([
-      await client.hello(3, pwd, user),
-      loadId ? client.clusterMyId() : Promise.resolve(),
-    ]);
-    return [client, id];
+    try {
+      client.start();
+      const whenAuthenticated = new Promise<string>((resolve, reject) => {
+        const unsubscribe = client.onAuth.listen(([err, id]) => {
+          unsubscribe();
+          if (err) reject(err); else resolve(id!);
+        });
+      });
+      const id = await withTimeout(5000, whenAuthenticated);
+      return [client, id];
+    } catch (error) {
+      client.stop();
+      throw error;
+    }
   }
 
   protected createClient(conf: RedisClusterNodeClientOpts): RedisClusterNodeClient {
@@ -211,6 +220,7 @@ export class RedisCluster implements Printable {
     };
     return new RedisClusterNodeClient(conf, codec);
   }
+
 
   // ----------------------------------------------------------- Client picking
 
@@ -313,6 +323,7 @@ export class RedisCluster implements Printable {
     }
     return await this.call(call);
   }
+
 
   // ---------------------------------------------------------------- Printable
 

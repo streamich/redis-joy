@@ -128,6 +128,7 @@ export class RedisClusterRouter implements Printable {
     return;
   }
 
+
   // ---------------------------------------------------------------- Printable
 
   public toString(tab?: string): string {

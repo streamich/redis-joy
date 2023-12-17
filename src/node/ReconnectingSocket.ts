@@ -129,6 +129,10 @@ export class ReconnectingSocket {
     this.getSocket().destroySoon();
   }
 
+  public reconnect(): void {
+    this.getSocket().destroy();
+  }
+
   protected retry(): void {
     if (this.retryTimer) return;
     const retryTimeout = this.getRetryTimeout();

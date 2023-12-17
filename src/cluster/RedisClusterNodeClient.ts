@@ -2,6 +2,7 @@ import * as tls from 'tls';
 import * as net from 'net';
 import {ReconnectingSocket, RedisClient} from '../node';
 import {printTree} from 'json-joy/es2020/util/print/printTree';
+import {FanOut} from 'thingies/es2020/fanout';
 import type {Printable} from 'json-joy/es2020/util/print/types';
 import type {RedisClientCodecOpts} from '../types';
 import type {RedisClusterShardsResponse} from './types';
@@ -48,7 +49,23 @@ export class RedisClusterNodeClient extends RedisClient implements Printable {
     });
     this.host = host;
     this.port = port;
+    this.socket.onReady.listen(() => {
+      Promise.all([
+        this.hello(3, opts.pwd, opts.user),
+        this.clusterMyId(),
+      ]).then(([, id]) => {
+        this.onAuth.emit([null, id]);
+      }).catch(err => {
+        this.onAuth.emit([err]);
+      });
+    });
   }
+
+
+  // ------------------------------------------------------------------- Events
+
+  public readonly onAuth = new FanOut<[error: Error | null, id?: string]>();
+
 
   // -------------------------------------------------------- Built-in commands
 
@@ -66,6 +83,7 @@ export class RedisClusterNodeClient extends RedisClient implements Printable {
   public clusterShards(): Promise<RedisClusterShardsResponse> {
     return this.cmd(['CLUSTER', 'SHARDS'], {utf8Res: true}) as Promise<RedisClusterShardsResponse>;
   }
+
 
   // ---------------------------------------------------------------- Printable
 
