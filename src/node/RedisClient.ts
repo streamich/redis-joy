@@ -24,9 +24,11 @@ export class RedisClient {
     });
   }
 
+
   // ------------------------------------------------------------------- Events
 
   public readonly onProtocolError = new Defer<Error>();
+
 
   // ------------------------------------------------------------ Socket writes
 
@@ -51,8 +53,12 @@ export class RedisClient {
         const cmd = call.args;
         if (isMultiCmd(cmd)) {
           const length = cmd.length;
-          for (let i = 0; i < length; i++) encoder.writeCmd(cmd[i]);
-        } else encoder.writeCmd(cmd);
+          if (call.utf8) for (let i = 0; i < length; i++) encoder.writeCmdUtf8(cmd[i]);
+          else for (let i = 0; i < length; i++) encoder.writeCmd(cmd[i]);
+        } else {
+          if (call.utf8) encoder.writeCmdUtf8(cmd);
+          else encoder.writeCmd(cmd);
+        }
       }
       const buf = encoder.writer.flush();
       // console.log(Buffer.from(buf).toString());
@@ -63,6 +69,7 @@ export class RedisClient {
       this.socket.reconnect();
     }
   };
+
 
   // ------------------------------------------------------------- Socket reads
 
@@ -104,6 +111,7 @@ export class RedisClient {
     }
   };
 
+
   // -------------------------------------------------------------- Life cycles
 
   public start() {
@@ -113,6 +121,7 @@ export class RedisClient {
   public stop() {
     this.socket.stop();
   }
+
 
   // -------------------------------------------------------- Command execution
 
@@ -127,6 +136,7 @@ export class RedisClient {
   public async cmd(args: Cmd | MultiCmd, opts?: CmdOpts): Promise<unknown> {
     const call = new RedisCall(args);
     if (opts) {
+      if (opts.utf8) call.utf8 = true;
       if (opts.utf8Res) call.utf8Res = true;
       if (opts.noRes) call.noRes = true;
     }
@@ -142,6 +152,7 @@ export class RedisClient {
   public cmdFnF(args: Cmd | MultiCmd): void {
     this.callFnf(callNoRes(args));
   }
+
 
   // -------------------------------------------------------- Built-in commands
 
@@ -161,4 +172,4 @@ export class RedisClient {
   }
 }
 
-export type CmdOpts = Partial<Pick<RedisCall, 'utf8Res' | 'noRes'>>;
+export type CmdOpts = Partial<Pick<RedisCall, 'utf8' | 'utf8Res' | 'noRes'>>;

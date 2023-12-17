@@ -12,6 +12,11 @@ export const callNoRes = (args: Cmd | MultiCmd) => {
  */
 export class RedisCall {
   /**
+   * Whether to encode command arguments as UTF-8 strings.
+   */
+  public utf8: boolean = false;
+
+  /**
    * Whether to try to decode RESP responses binary strings as UTF-8 strings.
    */
   public utf8Res: boolean = false;

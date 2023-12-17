@@ -316,6 +316,7 @@ export class RedisCluster implements Printable {
   public async cmd(args: Cmd | MultiCmd, opts?: ClusterCmdOpts): Promise<unknown> {
     const call = new RedisClusterCall(args);
     if (opts) {
+      if (opts.utf8) call.utf8 = true;
       if (opts.utf8Res) call.utf8Res = true;
       if (opts.noRes) call.noRes = true;
       if (opts.key) call.key = opts.key;

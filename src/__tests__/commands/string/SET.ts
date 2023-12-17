@@ -1,6 +1,6 @@
-import {ClusterTestSetup} from '../../types';
+import {TestSetup} from '../../types';
 
-export const run = (setup: ClusterTestSetup) => {
+export const run = (setup: TestSetup) => {
   describe('SET', () => {
     test('can set a key', async () => {
       const {client} = await setup();
