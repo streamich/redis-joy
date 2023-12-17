@@ -28,7 +28,7 @@ export class RedisClusterRouter implements Printable {
    * Rebuild the router hash slot mapping.
    * @param client Redis client to use to query the cluster.
    */
-  public async rebuild(client: RedisClusterNodeClient, id?: string): Promise<void> {
+  public async rebuild(client: RedisClusterNodeClient): Promise<void> {
     if (!client) throw new Error('NO_CLIENT');
     const slots = await client.clusterShards();
     this.ranges.clear();
@@ -38,10 +38,7 @@ export class RedisClusterRouter implements Printable {
     for (const slot of slots) {
       const range = new RedisClusterSlotRange(slot.slots[0], slot.slots[1], []);
       for (const nodeInfo of slot.nodes) {
-        const node =
-          id && nodeInfo.id === id
-            ? RedisClusterNode.fromNodeInfo(this.cluster, nodeInfo)
-            : RedisClusterNode.fromNodeInfo(this.cluster, nodeInfo, client.host);
+        const node = RedisClusterNode.fromNodeInfo(this.cluster, nodeInfo);
         this.setNode(node);
         range.nodes.push(node);
       }

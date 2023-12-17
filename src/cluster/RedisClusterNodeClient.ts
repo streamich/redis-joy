@@ -2,11 +2,9 @@ import * as tls from 'tls';
 import * as net from 'net';
 import {ReconnectingSocket, RedisClient} from '../node';
 import {printTree} from 'json-joy/es2020/util/print/printTree';
-import {FanOut} from 'thingies/es2020/fanout';
 import type {Printable} from 'json-joy/es2020/util/print/types';
 import type {RedisClientCodecOpts} from '../types';
 import type {RedisClusterShardsResponse} from './types';
-import type {RedisMode} from '../node/types';
 
 export interface RedisClusterNodeClientOpts {
   /** Hostname or IP address of the Redis node. Defaults to 'localhost'. */
@@ -39,39 +37,16 @@ export class RedisClusterNodeClient extends RedisClient implements Printable {
                 port,
                 ...opts.secureContext,
               })
-          : () =>
-              net.connect({
-                host,
-                port,
-              }),
+          : () => net.connect({host, port}),
       }),
+      user: opts.user,
+      pwd: opts.pwd,
       encoder: codec.encoder,
       decoder: codec.decoder,
     });
     this.host = host;
     this.port = port;
-    this.socket.onReady.listen(() => {
-      Promise.allSettled([
-        this.hello(3, opts.pwd, opts.user),
-        this.clusterMyId(),
-      ]).then(([hello, id]) => {
-        const myId: string = id.status === 'fulfilled' ? id.value : '';
-        if (hello.status === 'rejected') {
-          this.onAuth.emit([hello.reason]);
-          return;
-        }
-        const mode: RedisMode = hello.value.mode;
-        this.onAuth.emit([null, myId, mode]);
-      }).catch(err => {
-        this.onAuth.emit([err]);
-      });
-    });
   }
-
-
-  // ------------------------------------------------------------------- Events
-
-  public readonly onAuth = new FanOut<[error: Error | null, id?: string, mode?: RedisMode]>();
 
 
   // -------------------------------------------------------- Built-in commands

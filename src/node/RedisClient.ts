@@ -1,6 +1,7 @@
-import {Defer} from 'thingies/es2020/Defer';
 import {RespEncoder} from 'json-joy/es2020/json-pack/resp/RespEncoder';
 import {RespStreamingDecoder} from 'json-joy/es2020/json-pack/resp/RespStreamingDecoder';
+import {FanOut} from 'thingies/es2020/fanout';
+import {Defer} from 'thingies/es2020/Defer';
 import {ReconnectingSocket} from './ReconnectingSocket';
 import {RedisCall, callNoRes} from './RedisCall';
 import {isMultiCmd} from '../util/commands';
@@ -9,11 +10,12 @@ import type {RedisHelloResponse} from './types';
 
 export interface RedisClientOpts extends RedisClientCodecOpts {
   socket: ReconnectingSocket;
+  user?: string;
+  pwd?: string;
 }
 
 export class RedisClient {
   protected readonly socket: ReconnectingSocket;
-  protected protocol: 2 | 3 = 2;
 
   constructor(opts: RedisClientOpts) {
     const socket = (this.socket = opts.socket);
@@ -23,12 +25,26 @@ export class RedisClient {
       decoder.push(data);
       this.scheduleRead();
     });
+    socket.onReady.listen(() => {
+      this.hello(3, opts.pwd, opts.user)
+        .then(() => {
+          this.__whenReady.resolve();
+          this.onReady.emit();
+        })
+        .catch((error) => {
+          this.__whenReady.reject(error);
+          this.onError.emit(error);
+        });
+    });
   }
 
 
   // ------------------------------------------------------------------- Events
 
-  public readonly onProtocolError = new Defer<Error>();
+  private readonly __whenReady = new Defer<void>();
+  public readonly whenReady = this.__whenReady.promise;
+  public readonly onReady = new FanOut<void>();
+  public readonly onError = new FanOut<Error | unknown>();
 
 
   // ------------------------------------------------------------ Socket writes
@@ -66,7 +82,7 @@ export class RedisClient {
       this.socket.write(buf);
       requests.splice(0, length);
     } catch (error) {
-      this.onProtocolError.reject(error);
+      this.onError.emit(error as Error);
       this.socket.reconnect();
     }
   };
@@ -107,7 +123,7 @@ export class RedisClient {
       }
       if (i > 0) responses.splice(0, i);
     } catch (error) {
-      this.onProtocolError.reject(error);
+      this.onError.emit(error as Error);
       this.socket.reconnect();
     }
   };
@@ -160,9 +176,7 @@ export class RedisClient {
   /** Authenticate and negotiate protocol version. */
   public async hello(protocol: 2 | 3, pwd?: string, usr: string = ''): Promise<RedisHelloResponse> {
     const args: Cmd = pwd ? ['HELLO', protocol, 'AUTH', usr, pwd] : ['HELLO', protocol];
-    const result = await this.call(new RedisCall(args)) as RedisHelloResponse;
-    this.protocol = protocol;
-    return result;
+    return await this.call(new RedisCall(args)) as RedisHelloResponse;
   }
 }
 

@@ -15,7 +15,6 @@ export class RedisClusterNode implements Printable {
   public static fromNodeInfo = (
     cluster: RedisCluster,
     nodeInfo: RedisClusterShardsResponseNode,
-    extraHost: string = '',
   ): RedisClusterNode => {
     const id = nodeInfo.id + '';
     const port = Number(nodeInfo.port ? nodeInfo.port : nodeInfo['tls-port']);
@@ -25,7 +24,6 @@ export class RedisClusterNode implements Printable {
     if (nodeInfo.endpoint && nodeInfo.endpoint !== '?') hosts.push(nodeInfo.endpoint + '');
     if (nodeInfo.hostname && nodeInfo.hostname !== '?') hosts.push(nodeInfo.hostname + '');
     if (nodeInfo.ip && nodeInfo.ip !== '?') hosts.push(nodeInfo.ip + '');
-    if (!hosts.length && extraHost) hosts.push(extraHost);
     if (!hosts.length) throw new Error('NO_HOSTS');
     const node = new RedisClusterNode(cluster, id, port, hosts, tls);
     annotate(node, nodeInfo);

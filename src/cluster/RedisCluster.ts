@@ -12,9 +12,9 @@ import {RedirectType} from './constants';
 import {withTimeout} from '../util/timeout';
 import {printTree} from 'json-joy/es2020/util/print/printTree';
 import {getSlotAny} from '../util/slots';
+import {isMultiCmd} from '../util/commands';
 import type {Printable} from 'json-joy/es2020/util/print/types';
 import type {CmdOpts} from '../node';
-import {isMultiCmd} from '../util/commands';
 
 export interface RedisClusterOpts extends RedisClientCodecOpts {
   /**
@@ -97,10 +97,10 @@ export class RedisCluster implements Printable {
       const {seeds} = this.opts;
       seed = seed % seeds.length;
       const seedConfig = seeds[seed];
-      const [client, id] = await this.startClientFromConfig(seedConfig);
+      const client = await this.startClientFromConfig(seedConfig);
       try {
         if (this.stopped) return;
-        await this.router.rebuild(client, id);
+        await this.router.rebuild(client);
       } finally {
         // Discard the seed client as some clusters always return MOVED errors
         // from seed clients.
@@ -180,7 +180,7 @@ export class RedisCluster implements Printable {
     const config: RedisClusterNodeClientOpts = {host, port: node.port};
     if (node.tls) config.tls = true;
     try {
-      const [client] = await withTimeout(5000, this.startClientFromConfig(config));
+      const client = await withTimeout(5000, this.startClientFromConfig(config));
       this.clients.set(node.id, client);
       return client;
     } catch (error) {
@@ -191,7 +191,7 @@ export class RedisCluster implements Printable {
   }
 
   /** When cluster client boots it creates nodes from seed configs. */
-  protected async startClientFromConfig(config: RedisClusterNodeClientOpts): Promise<[client: RedisClusterNodeClient, id: string]> {
+  protected async startClientFromConfig(config: RedisClusterNodeClientOpts): Promise<RedisClusterNodeClient> {
     const conf = {
       ...this.opts.connectionConfig,
       ...config,
@@ -199,14 +199,8 @@ export class RedisCluster implements Printable {
     const client = this.createClient(conf);
     try {
       client.start();
-      const whenAuthenticated = new Promise<string>((resolve, reject) => {
-        const unsubscribe = client.onAuth.listen(([err, id]) => {
-          unsubscribe();
-          if (err) reject(err); else resolve(id!);
-        });
-      });
-      const id = await withTimeout(5000, whenAuthenticated);
-      return [client, id];
+      await withTimeout(5000, client.whenReady);
+      return client;
     } catch (error) {
       client.stop();
       throw error;
@@ -252,7 +246,7 @@ export class RedisCluster implements Printable {
     if (node) return await this.ensureNodeHasClient(node);
     const seeds = this.opts.seeds;
     const seed = seeds[Math.floor(Math.random() * seeds.length)];
-    const [client] = await this.startClientFromConfig(seed);
+    const client = await this.startClientFromConfig(seed);
     return client;
   }
 
