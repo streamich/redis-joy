@@ -6,6 +6,7 @@ import {FanOut} from 'thingies/es2020/fanout';
 import type {Printable} from 'json-joy/es2020/util/print/types';
 import type {RedisClientCodecOpts} from '../types';
 import type {RedisClusterShardsResponse} from './types';
+import type {RedisMode} from '../node/types';
 
 export interface RedisClusterNodeClientOpts {
   /** Hostname or IP address of the Redis node. Defaults to 'localhost'. */
@@ -50,11 +51,17 @@ export class RedisClusterNodeClient extends RedisClient implements Printable {
     this.host = host;
     this.port = port;
     this.socket.onReady.listen(() => {
-      Promise.all([
+      Promise.allSettled([
         this.hello(3, opts.pwd, opts.user),
         this.clusterMyId(),
-      ]).then(([, id]) => {
-        this.onAuth.emit([null, id]);
+      ]).then(([hello, id]) => {
+        const myId: string = id.status === 'fulfilled' ? id.value : '';
+        if (hello.status === 'rejected') {
+          this.onAuth.emit([hello.reason]);
+          return;
+        }
+        const mode: RedisMode = hello.value.mode;
+        this.onAuth.emit([null, myId, mode]);
       }).catch(err => {
         this.onAuth.emit([err]);
       });
@@ -64,7 +71,7 @@ export class RedisClusterNodeClient extends RedisClient implements Printable {
 
   // ------------------------------------------------------------------- Events
 
-  public readonly onAuth = new FanOut<[error: Error | null, id?: string]>();
+  public readonly onAuth = new FanOut<[error: Error | null, id?: string, mode?: RedisMode]>();
 
 
   // -------------------------------------------------------- Built-in commands

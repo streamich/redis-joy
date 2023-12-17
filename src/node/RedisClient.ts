@@ -5,6 +5,7 @@ import {ReconnectingSocket} from './ReconnectingSocket';
 import {RedisCall, callNoRes} from './RedisCall';
 import {isMultiCmd} from '../util/commands';
 import type {Cmd, MultiCmd, RedisClientCodecOpts} from '../types';
+import type {RedisHelloResponse} from './types';
 
 export interface RedisClientOpts extends RedisClientCodecOpts {
   socket: ReconnectingSocket;
@@ -157,18 +158,11 @@ export class RedisClient {
   // -------------------------------------------------------- Built-in commands
 
   /** Authenticate and negotiate protocol version. */
-  public async hello(protocol: 2 | 3, pwd?: string, usr: string = ''): Promise<void> {
-    try {
-      const args: Cmd = pwd ? ['HELLO', protocol, 'AUTH', usr, pwd] : ['HELLO', protocol];
-      await this.call(new RedisCall(args));
-      this.protocol = protocol;
-    } catch (error) {
-      if (pwd || usr) {
-        // This is likely protocol switching error. Try again with protocol 2.
-        const args: Cmd = usr ? ['AUTH', usr, pwd || ''] : ['AUTH', pwd || ''];
-        await this.call(new RedisCall(args));
-      }
-    }
+  public async hello(protocol: 2 | 3, pwd?: string, usr: string = ''): Promise<RedisHelloResponse> {
+    const args: Cmd = pwd ? ['HELLO', protocol, 'AUTH', usr, pwd] : ['HELLO', protocol];
+    const result = await this.call(new RedisCall(args)) as RedisHelloResponse;
+    this.protocol = protocol;
+    return result;
   }
 }
 
