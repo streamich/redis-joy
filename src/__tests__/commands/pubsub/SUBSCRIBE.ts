@@ -1,5 +1,6 @@
 import {until} from 'thingies';
 import {StandaloneTestSetup} from '../../types';
+import {utf8} from '../../../util/buf';
 
 export const standalone = (setup: StandaloneTestSetup) => {
   describe('SUBSCRIBE', () => {
@@ -112,6 +113,18 @@ export const standalone = (setup: StandaloneTestSetup) => {
       await client.publish(channel, new Uint8Array([1]));
       await until(() => msgs.length === 2);
       expect(msgs).toEqual([new Uint8Array([1]), new Uint8Array([1])]);
+    });
+
+    test('channel and message can contain emojis', async () => {
+      const {client} = await setup();
+      const channel = utf8('channel_😱_' + Date.now());
+      const msgs: unknown[] = [];
+      client.sub(channel, (recv) => {
+        msgs.push(recv);
+      });
+      client.pub(channel, utf8`a😱b`);
+      await until(() => msgs.length === 1);
+      expect(msgs).toEqual([utf8`a😱b`]);
     });
   });
 };
