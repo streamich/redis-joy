@@ -1,11 +1,11 @@
-import {RedisCall} from '../node';
+import {StandaloneCall} from '../standalone';
 import {RedirectType} from './constants';
 import type {RedisClusterNodeClient} from './RedisClusterNodeClient';
 
 /**
  * Represents a single Redis request/response command call.
  */
-export class RedisClusterCall extends RedisCall {
+export class RedisClusterCall extends StandaloneCall {
   public static chain(call: RedisClusterCall, client: RedisClusterNodeClient): RedisClusterCall {
     const next = new RedisClusterCall(call.args);
     // next.prev = call;

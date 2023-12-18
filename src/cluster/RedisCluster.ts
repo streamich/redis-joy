@@ -14,7 +14,7 @@ import {printTree} from 'json-joy/es2020/util/print/printTree';
 import {getSlotAny} from '../util/slots';
 import {isMultiCmd} from '../util/commands';
 import type {Printable} from 'json-joy/es2020/util/print/types';
-import type {CmdOpts} from '../node';
+import type {CmdOpts} from '../standalone';
 
 export interface RedisClusterOpts extends RedisClientCodecOpts {
   /**

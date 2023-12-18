@@ -1,7 +1,8 @@
 import * as tls from 'tls';
 import * as net from 'net';
-import {ReconnectingSocket, RedisClient} from '../node';
+import {StandaloneClient} from '../standalone';
 import {printTree} from 'json-joy/es2020/util/print/printTree';
+import {ReconnectingSocket} from '../util/ReconnectingSocket';
 import type {Printable} from 'json-joy/es2020/util/print/types';
 import type {RedisClientCodecOpts} from '../types';
 import type {RedisClusterShardsResponse} from './types';
@@ -21,7 +22,7 @@ export interface RedisClusterNodeClientOpts {
   secureContext?: tls.SecureContextOptions;
 }
 
-export class RedisClusterNodeClient extends RedisClient implements Printable {
+export class RedisClusterNodeClient extends StandaloneClient implements Printable {
   /** Hostname of the Redis node. */
   public readonly host: string;
   /** Port of the Redis node. */

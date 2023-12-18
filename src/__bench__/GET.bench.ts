@@ -1,17 +1,20 @@
 // npx ts-node src/__bench__/GET.bench.ts
 
+/* tslint:disable no-console */
+
 import {Suite} from 'benchmark';
 import * as net from 'net';
-import {ReconnectingSocket, RedisClient} from '../node';
+import {StandaloneClient} from '../standalone';
 import * as config from '../__tests__/config';
 import {RespEncoder} from 'json-joy/es2020/json-pack/resp';
 import {RespStreamingDecoder} from 'json-joy/es2020/json-pack/resp/RespStreamingDecoder';
 import {Redis} from 'ioredis';
 import {createClient} from 'redis';
+import {ReconnectingSocket} from '../util/ReconnectingSocket';
 
 const host = config.standalone.host;
 const port = config.standalone.port;
-const client = new RedisClient({
+const client = new StandaloneClient({
   socket: new ReconnectingSocket({
     createSocket: () => net.connect({host, port}),
   }),
