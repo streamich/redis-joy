@@ -45,7 +45,7 @@ export class RedisClusterNodeClient extends StandaloneClient implements Printabl
                 ...opts.secureContext,
               })
           : () => net.connect({host, port}),
-          maxBufferSize: opts.maxBufferSize,
+        maxBufferSize: opts.maxBufferSize,
       }),
       user: opts.user,
       pwd: opts.pwd,

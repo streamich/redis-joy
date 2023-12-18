@@ -29,7 +29,7 @@ export class RedisTcpServer {
     this.server.on('close', this.handleClose);
     this.server.listen(9999, () => {
       console.log('server bound');
-    }); 
+    });
   }
 
   private readonly handleListening = () => {
@@ -77,7 +77,15 @@ export class RedisTcpServer {
             break;
           }
           case 'HELLO': {
-            const response = this.encoder.encode({server: 'redis', version: '6.0.9', proto: 2, id: 1, mode: 'standalone', role: 'master', modules: []});
+            const response = this.encoder.encode({
+              server: 'redis',
+              version: '6.0.9',
+              proto: 2,
+              id: 1,
+              mode: 'standalone',
+              role: 'master',
+              modules: [],
+            });
             socket.write(response);
             break;
           }
