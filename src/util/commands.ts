@@ -82,4 +82,3 @@ export const isPushSmessage = (val: unknown): boolean => {
   if (typeof type === 'string') return type === 'smessage';
   return false;
 };
-

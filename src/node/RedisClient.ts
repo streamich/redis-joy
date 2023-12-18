@@ -319,7 +319,10 @@ export class RedisClient {
     };
   }
 
-  public ssubscribe(channel: Uint8Array | string, listener: (message: Uint8Array) => void): [unsubscribe: () => void, subscribed: Promise<void>] {
+  public ssubscribe(
+    channel: Uint8Array | string,
+    listener: (message: Uint8Array) => void,
+  ): [unsubscribe: () => void, subscribed: Promise<void>] {
     const channelBuf = typeof channel === 'string' ? bufferToUint8Array(Buffer.from(channel)) : channel;
     let fanout = this.ssubs.get(channelBuf);
     let subscribed: Promise<void>;
