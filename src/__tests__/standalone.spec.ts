@@ -5,9 +5,10 @@ import * as commands from './commands';
 import {ReconnectingSocket} from '../node';
 import {RespEncoder} from 'json-joy/es2020/json-pack/resp/RespEncoder';
 import {RespStreamingDecoder} from 'json-joy/es2020/json-pack/resp/RespStreamingDecoder';
+import * as config from './config';
 
-const host = '127.0.0.1';
-const port = 6379;
+const host = config.standalone.host;
+const port = config.standalone.port;
 const clients: RedisClient[] = [];
 
 const setupCluster: StandaloneTestSetup = async () => {
