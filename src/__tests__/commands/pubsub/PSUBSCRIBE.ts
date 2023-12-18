@@ -144,5 +144,25 @@ export const standalone = (setup: StandaloneTestSetup) => {
       await client.publish(channel, new Uint8Array([1]));
       await until(() => msgs.length === 2);
     });
+
+    test('re-subscribes when socket re-connects', async () => {
+      const {client} = await setup();
+      const pattern = 'p?ttern_reconnect_' + Date.now();
+      const msgs: unknown[] = [];
+      client.psub(pattern, (recv) => {
+        msgs.push(recv);
+      });
+      client.publish(pattern, new Uint8Array([1, 2, 3]));
+      await until(() => msgs.length === 1);
+      expect(msgs[0]).toEqual([ascii(pattern), new Uint8Array([1, 2, 3])]);
+      (client as any).socket.socket.destroy();
+      await new Promise((resolve) => setTimeout(resolve, 10));
+      await until(() => client.isConnected());
+      await until(() => msgs.length === 1);
+      await new Promise((resolve) => setTimeout(resolve, 25));
+      client.publish(pattern, new Uint8Array([4]));
+      await until(() => msgs.length === 2);
+      expect(msgs[1]).toEqual([ascii(pattern), new Uint8Array([4])]);
+    });
   });
 };

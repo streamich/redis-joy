@@ -54,9 +54,22 @@ export class RedisClient {
           this.__whenReady.reject(error);
           this.onError.emit(error);
         });
-      const subscribeCmd = [SUBSCRIBE];
-      this.subs.forEach((node) => subscribeCmd.push(node.k));
-      if (subscribeCmd.length > 1) this.cmdFnF(subscribeCmd);
+      const {subs, psubs, ssubs} = this;
+      if (!subs.isEmpty()) {
+        const subscribeCmd = [SUBSCRIBE];
+        subs.forEach((node) => subscribeCmd.push(node.k));
+        if (subscribeCmd.length > 1) this.cmdFnF(subscribeCmd);
+      }
+      if (!psubs.isEmpty()) {
+        const subscribeCmd = [PSUBSCRIBE];
+        psubs.forEach((node) => subscribeCmd.push(node.k));
+        if (subscribeCmd.length > 1) this.cmdFnF(subscribeCmd);
+      }
+      if (!ssubs.isEmpty()) {
+        const subscribeCmd = [SSUBSCRIBE];
+        ssubs.forEach((node) => subscribeCmd.push(node.k));
+        if (subscribeCmd.length > 1) this.cmdFnF(subscribeCmd);
+      }
     });
   }
 
