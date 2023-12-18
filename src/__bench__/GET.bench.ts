@@ -7,7 +7,7 @@ import * as config from '../__tests__/config';
 import {RespEncoder} from 'json-joy/es2020/json-pack/resp';
 import {RespStreamingDecoder} from 'json-joy/es2020/json-pack/resp/RespStreamingDecoder';
 import {Redis} from 'ioredis';
-import { createClient } from 'redis';
+import {createClient} from 'redis';
 
 const host = config.standalone.host;
 const port = config.standalone.port;
@@ -30,9 +30,9 @@ const value = 'b45165ed3cd437b9ffad02a2aad22a4ddc69162470e2622982889ce5826f6e3d'
 
 const main = async () => {
   const redis = await createClient()
-    .on('error', err => console.log('Redis Client Error', err))
+    .on('error', (err) => console.log('Redis Client Error', err))
     .connect();
-    
+
   await client.cmd(['SET', 'a', 'b']);
   await ioredis.set('a', 'b');
   await redis.set('a', 'b');
@@ -60,7 +60,7 @@ const main = async () => {
     .on('complete', () => {
       console.log('Fastest is ' + suite.filter('fastest').map('name'));
     })
-    .run({ 'async': true });
+    .run({async: true});
 };
 
 main().catch((err) => {
