@@ -1,17 +1,23 @@
 import {AvlMap} from 'json-joy/es2020/util/trees/avl/AvlMap';
 import {RedisClusterSlotRange} from './RedisClusterSlotRange';
-import {RedisClusterNodeInfo} from './RedisClusterNodeInfo';
-import type {RedisClient} from '../node';
+import {RedisClusterNode} from './RedisClusterNode';
+import {NodeHealth, NodeRole} from './constants';
+import {printTree} from 'json-joy/es2020/util/print/printTree';
+import type {Printable} from 'json-joy/es2020/util/print/types';
+import type {RedisCluster} from './RedisCluster';
+import type {RedisClusterNodeClient} from './RedisClusterNodeClient';
 
-export class RedisClusterRouter {
-  /** Map of slots ordered by slot end (max) value. */
+export class RedisClusterRouter implements Printable {
+  /** Map of slots ordered by slot end (min) value. */
   protected readonly ranges = new AvlMap<number, RedisClusterSlotRange>();
 
-  /** Information about each node in the cluster, by node ID. */
-  protected readonly infos = new Map<string, RedisClusterNodeInfo>();
+  /** Map of node ID to node info instance. */
+  protected readonly byId = new Map<string, RedisClusterNode>();
 
-  /** A sparse list of clients, by node ID. */
-  protected readonly clients = new Map<string, RedisClient>();
+  /** Mapping of "host:port" to node info instance. */
+  protected readonly byHostAndPort = new Map<string, RedisClusterNode>();
+
+  constructor(protected readonly cluster: RedisCluster) {}
 
   /** Whether the route table is empty. */
   public isEmpty(): boolean {
@@ -22,79 +28,106 @@ export class RedisClusterRouter {
    * Rebuild the router hash slot mapping.
    * @param client Redis client to use to query the cluster.
    */
-  public async rebuild(client: RedisClient): Promise<void> {
-    const [id, slots] = await Promise.all([
-      client.clusterMyId(),
-      client.clusterShards(),
-    ]);
+  public async rebuild(client: RedisClusterNodeClient): Promise<void> {
+    if (!client) throw new Error('NO_CLIENT');
+    const slots = await client.clusterShards();
     this.ranges.clear();
-    this.infos.clear();
+    this.byId.clear();
+    this.byHostAndPort.clear();
+    if (!slots.length) throw new Error('NO_SLOTS');
     for (const slot of slots) {
       const range = new RedisClusterSlotRange(slot.slots[0], slot.slots[1], []);
-      for (const node of slot.nodes) {
-        const info = RedisClusterNodeInfo.from(node);
-        this.infos.set(info.id, info);
-        range.nodes.push(info);
+      for (const nodeInfo of slot.nodes) {
+        const node = RedisClusterNode.fromNodeInfo(this.cluster, nodeInfo);
+        this.setNode(node);
+        range.nodes.push(node);
       }
-      this.ranges.insert(range.max, range);
+      this.ranges.insert(range.min, range);
     }
-    this.clients.forEach((client, id) => {
-      if (!this.infos.has(id)) {
-        client.stop();
-        this.clients.delete(id);
+    // TODO: remove orphan clients
+  }
+
+  /** Overwrite the node value. */
+  public setNode(node: RedisClusterNode): void {
+    this.byId.set(node.id, node);
+    const port = node.port;
+    for (const host of node.hosts) {
+      const hostAndPort = host + ':' + port;
+      this.byHostAndPort.set(hostAndPort, node);
+    }
+  }
+
+  /** Merge the node value into a potentially existing node. */
+  public mergeNode(node: RedisClusterNode): RedisClusterNode {
+    const existing = this.byId.get(node.id);
+    if (existing) {
+      if (existing.port !== node.port) throw new Error('INVALID_PORT');
+      for (const host of node.hosts) {
+        if (!existing.hosts.includes(host)) {
+          existing.hosts.push(host);
+          const endpoint = host + ':' + existing.port;
+          this.byHostAndPort.set(endpoint, existing);
+        }
       }
-    });
-    if (this.infos.has(id)) this.clients.set(id, client);
+      if (existing.role === NodeRole.UNKNOWN) existing.role = node.role;
+      if (existing.replicationOffset === 0) existing.replicationOffset = node.replicationOffset;
+      if (existing.health === NodeHealth.UNKNOWN) existing.health = node.health;
+      return existing;
+    } else {
+      this.setNode(node);
+      return node;
+    }
   }
 
-  public setClient(info: RedisClusterNodeInfo, client: RedisClient): void {
-    if (!this.infos.has(info.id)) throw new Error('NO_SUCH_NODE');
-    this.clients.set(info.id, client);
+  public getNodeByEndpoint(host: string, port: number): RedisClusterNode | undefined {
+    const hostAndPort = host + ':' + port;
+    return this.byHostAndPort.get(hostAndPort);
   }
 
-  public getNodesForSlot(slot: number): RedisClusterNodeInfo[] {
+  public getNodesForSlot(slot: number): RedisClusterNode[] {
     const range = this.ranges.getOrNextLower(slot);
     if (!range) return [];
     return range.v.nodes;
   }
 
-  public getMasterForSlot(slot: number): RedisClusterNodeInfo | undefined {
+  public getMasterNodeForSlot(slot: number): RedisClusterNode | undefined {
     const nodes = this.getNodesForSlot(slot);
     if (!nodes) return undefined;
-    for (const node of nodes) if (node.role === 'master') return node;
+    for (const node of nodes) if (node.role === NodeRole.MASTER) return node;
     return;
   }
 
-  public getReplicasForSlot(slot: number): RedisClusterNodeInfo[] {
+  public getReplicaNodesForSlot(slot: number): RedisClusterNode[] {
     const nodes = this.getNodesForSlot(slot);
-    const replicas: RedisClusterNodeInfo[] = [];
-    for (const node of nodes) if (node.role === 'replica') replicas.push(node);
+    const replicas: RedisClusterNode[] = [];
+    for (const node of nodes) if (node.role === NodeRole.REPLICA) replicas.push(node);
     return replicas;
   }
 
-  public getRandomReplicaForSlot(slot: number): RedisClusterNodeInfo | undefined {
-    const replicas = this.getReplicasForSlot(slot);
+  public getRandomReplicaNodeForSlot(slot: number): RedisClusterNode | undefined {
+    const replicas = this.getReplicaNodesForSlot(slot);
     if (!replicas.length) return undefined;
     return replicas[Math.floor(Math.random() * replicas.length)];
   }
 
-  public getRandomNodeForSlot(slot: number): RedisClusterNodeInfo | undefined {
+  public getRandomNodeForSlot(slot: number): RedisClusterNode | undefined {
     const nodes = this.getNodesForSlot(slot);
     if (!nodes.length) return undefined;
     return nodes[Math.floor(Math.random() * nodes.length)];
   }
 
-  public getClient(id: string): RedisClient | undefined {
-    return this.clients.get(id);
-  }
-
-  public getRandomClient(): RedisClient | undefined {
-    const size = this.clients.size;
+  public getRandomNode(): RedisClusterNode | undefined {
+    const size = this.byId.size;
     if (!size) return undefined;
     const index = Math.floor(Math.random() * size);
     let i = 0;
-    for (const client of this.clients.values())
-      if (i++ === index) return client;
+    for (const client of this.byId.values()) if (i++ === index) return client;
     return;
+  }
+
+  // ---------------------------------------------------------------- Printable
+
+  public toString(tab?: string): string {
+    return 'router' + printTree(tab, [(tab) => this.ranges.toString(tab)]);
   }
 }

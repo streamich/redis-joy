@@ -1,16 +1,18 @@
-export type RedisClusterShardsResponse = RedisClusterShardsResponseSlot[];
+export type RedisMode = 'cluster' | 'sentinel' | 'standalone';
 
-export interface RedisClusterShardsResponseSlot {
-  slots: [number, number];
-  nodes: RedisClusterShardsResponseNode[];
+export interface RedisHelloResponse {
+  server: 'redis' | string;
+  version: string;
+  proto: number;
+  id: number;
+  mode: RedisMode;
+  role: 'master' | 'replica' | string;
+  modules: RedisModuleResponse[];
 }
 
-export interface RedisClusterShardsResponseNode {
-  id: string;
-  port: number;
-  ip: string;
-  endpoint: string;
-  role: 'master' | 'replica';
-  'replication-offset': number;
-  health: 'online' | 'failed' | 'loading';
+export interface RedisModuleResponse {
+  name: string;
+  ver: number;
+  path: string;
+  args: string[];
 }
