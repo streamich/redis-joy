@@ -54,10 +54,14 @@ export class RedisClient {
           this.__whenReady.reject(error);
           this.onError.emit(error);
         });
-      // const subscribeCmd = [SUBSCRIBE];
-      // this.subs.forEach((node) => subscribeCmd.push(node.k));
-      // if (subscribeCmd.length > 1) this.cmdFnF(subscribeCmd);
+      const subscribeCmd = [SUBSCRIBE];
+      this.subs.forEach((node) => subscribeCmd.push(node.k));
+      if (subscribeCmd.length > 1) this.cmdFnF(subscribeCmd);
     });
+  }
+
+  public isConnected(): boolean {
+    return this.socket.isConnected();
   }
 
   // ------------------------------------------------------------------- Events

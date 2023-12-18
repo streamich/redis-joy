@@ -71,6 +71,10 @@ export class ReconnectingSocket {
     };
   }
 
+  public isConnected(): boolean {
+    return !!this.socket;
+  }
+
   private getSocket(): net.Socket {
     const socket = this.socket;
     if (!socket) throw new Error('NOT_CONNECTED');
