@@ -5,9 +5,22 @@ import {FanOut} from 'thingies/es2020/fanout';
 import {Defer} from 'thingies/es2020/Defer';
 import {ReconnectingSocket} from './ReconnectingSocket';
 import {RedisCall, callNoRes} from './RedisCall';
-import {isMultiCmd, isSubscribeAckResponse} from '../util/commands';
+import {isPushMessage, isMultiCmd} from '../util/commands';
+import {AvlMap} from 'json-joy/es2020/util/trees/avl/AvlMap';
+import {bufferToUint8Array} from 'json-joy/es2020/util/buffers/bufferToUint8Array';
+import {cmpUint8Array, ascii} from '../util/buf';
 import type {Cmd, MultiCmd, RedisClientCodecOpts} from '../types';
 import type {RedisHelloResponse} from './types';
+
+const HELLO = ascii `HELLO`;
+const AUTH = ascii `AUTH`;
+const SUBSCRIBE = ascii `SUBSCRIBE`;
+const PUBLISH = ascii `PUBLISH`;
+const UNSUBSCRIBE = ascii `UNSUBSCRIBE`;
+const PSUBSCRIBE = ascii `PSUBSCRIBE`;
+const PUNSUBSCRIBE = ascii `PUNSUBSCRIBE`;
+const SSUBSCRIBE = ascii `SSUBSCRIBE`;
+const SUNSUBSCRIBE = ascii `SUNSUBSCRIBE`;
 
 export interface RedisClientOpts extends RedisClientCodecOpts {
   socket: ReconnectingSocket;
@@ -17,6 +30,9 @@ export interface RedisClientOpts extends RedisClientCodecOpts {
 
 export class RedisClient {
   protected readonly socket: ReconnectingSocket;
+  public readonly subs = new AvlMap<Uint8Array, FanOut<Uint8Array>>(cmpUint8Array);
+  public readonly psubs = new AvlMap<Uint8Array, FanOut<[channel: Uint8Array, message: Uint8Array]>>(cmpUint8Array);
+  public readonly ssubs = new AvlMap<Uint8Array, FanOut<Uint8Array>>(cmpUint8Array);
 
   constructor(opts: RedisClientOpts) {
     const socket = (this.socket = opts.socket);
@@ -46,7 +62,7 @@ export class RedisClient {
   public readonly whenReady = this.__whenReady.promise;
   public readonly onReady = new FanOut<void>();
   public readonly onError = new FanOut<Error | unknown>();
-  public readonly onPush = new FanOut<unknown>();
+  public readonly onPush = new FanOut<RespPush>();
 
 
   // ------------------------------------------------------------ Socket writes
@@ -114,19 +130,22 @@ export class RedisClient {
         // console.log(msg);
         if (msg === undefined) break;
         if (msg instanceof RespPush) {
+          this.onPush.emit(msg);
           const val = msg.val;
-          if (isSubscribeAckResponse(val)) {
-            if (!call) throw new Error('UNEXPECTED_RESPONSE');
-            call.response.resolve(undefined);
-            i++;
+          // console.log('push', Buffer.from(val[0] as any).toString());
+          if (isPushMessage(val)) {
+            const fanout = this.subs.get(val[1] as Uint8Array);
+            if (fanout) fanout.emit(val[2] as Uint8Array);
             continue;
           }
-          this.onPush.emit(msg);
+          if (call) call.response.resolve(undefined);
+          i++;
           continue;
         }
-        if (!call) throw new Error('UNEXPECTED_RESPONSE');
-        const res = call.response;
-        if (msg instanceof Error) res.reject(msg); else res.resolve(msg);
+        if (call instanceof RedisCall) {
+          const res = call.response;
+          if (msg instanceof Error) res.reject(msg); else res.resolve(msg);
+        } else if (call !== null) throw new Error('UNEXPECTED_RESPONSE');
         i++;
       }
       if (i > 0) responses.splice(0, i);
@@ -183,8 +202,60 @@ export class RedisClient {
 
   /** Authenticate and negotiate protocol version. */
   public async hello(protocol: 2 | 3, pwd?: string, usr: string = ''): Promise<RedisHelloResponse> {
-    const args: Cmd = pwd ? ['HELLO', protocol, 'AUTH', usr, pwd] : ['HELLO', protocol];
+    const args: Cmd = pwd ? [HELLO, protocol, AUTH, usr, pwd] : [HELLO, protocol];
     return await this.call(new RedisCall(args)) as RedisHelloResponse;
+  }
+
+  public subscribe(channel: Uint8Array | string, listener: (message: Uint8Array) => void): [unsubscribe: () => void, subscribed: Promise<void>] {
+    const channelBuf = typeof channel === 'string' ? bufferToUint8Array(Buffer.from(channel)) : channel;
+    let fanout = this.subs.get(channelBuf);
+    let subscribed: Promise<void>;
+    if (!fanout) {
+      fanout = new FanOut<Uint8Array>();
+      this.subs.set(channelBuf, fanout);
+      const call = new RedisCall([SUBSCRIBE, channelBuf]);
+      this.call(call);
+      subscribed = call.response.promise as Promise<void>;
+    } else {
+      subscribed = Promise.resolve();
+    }
+    const unsubscribe = fanout.listen(listener);
+    return [
+      () => {
+        unsubscribe();
+        if (fanout!.listeners.size === 0) {
+          this.subs.del(channelBuf);
+          this.cmdFnF([UNSUBSCRIBE, channelBuf]);
+        }
+      },
+      subscribed,
+    ];
+  }
+
+  public sub(channel: Uint8Array | string, listener: (message: Uint8Array) => void): (() => void) {
+    const channelBuf = typeof channel === 'string' ? bufferToUint8Array(Buffer.from(channel)) : channel;
+    let fanout = this.subs.get(channelBuf);
+    if (!fanout) {
+      fanout = new FanOut<Uint8Array>();
+      this.subs.set(channelBuf, fanout);
+      this.cmdFnF([SUBSCRIBE, channelBuf]);
+    }
+    const unsubscribe = fanout.listen(listener);
+    return () => {
+      unsubscribe();
+      if (fanout!.listeners.size === 0) {
+        this.subs.del(channelBuf);
+        this.cmdFnF([UNSUBSCRIBE, channelBuf]);
+      }
+    };
+  }
+
+  public async publish(channel: Uint8Array | string, message: Uint8Array | string): Promise<number> {
+    return await this.cmd([PUBLISH, channel, message]) as number;
+  }
+
+  public pub(channel: Uint8Array | string, message: Uint8Array | string): void {
+    return this.cmdFnF([PUBLISH, channel, message]);
   }
 }
 

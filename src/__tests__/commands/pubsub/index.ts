@@ -1,8 +1,8 @@
-import {TestSetup} from '../../types';
+import {StandaloneTestSetup} from '../../types';
 import * as SUBSCRIBE from './SUBSCRIBE';
 
-export const run = (setup: TestSetup) => {
+export const standalone = (setup: StandaloneTestSetup) => {
   describe('pubsub commands', () => {
-    SUBSCRIBE.run(setup);
+    SUBSCRIBE.standalone(setup);
   });
 };

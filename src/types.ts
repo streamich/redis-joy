@@ -10,4 +10,4 @@ export interface RedisClientCodecOpts {
 
 export type MultiCmd = Cmd[];
 export type Cmd = Arg[];
-export type Arg = string | number | Buffer;
+export type Arg = string | number | Uint8Array;
