@@ -15,9 +15,9 @@ const client = new RedisClient({
   encoder: new RespEncoder(),
   decoder: new RespStreamingDecoder(),
 });
-client.onError.listen((err) => {
-  console.error('onError', err);
-});
+// client.onError.listen((err) => {
+//   console.error('onError', err);
+// });
 client.start();
 
 const setupCluster: ClusterTestSetup = async () => {

@@ -13,9 +13,9 @@ const client = new RedisCluster({
     pwd,
   },
 });
-client.onError.listen((err) => {
-  console.error('onError', err);
-});
+// client.onError.listen((err) => {
+//   console.error('onError', err);
+// });
 client.start();
 
 const setupCluster: ClusterTestSetup = async () => {

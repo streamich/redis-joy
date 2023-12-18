@@ -18,9 +18,9 @@ const setupCluster: StandaloneTestSetup = async () => {
     encoder: new RespEncoder(),
     decoder: new RespStreamingDecoder(),
   });
-  client.onError.listen((err) => {
-    console.error('onError', err);
-  });
+  // client.onError.listen((err) => {
+  //   console.error('onError', err);
+  // });
   // client.onPush.listen((push) => {
   //   console.log(push);
   // });
