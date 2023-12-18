@@ -1,7 +1,8 @@
 import * as tls from 'tls';
 import * as net from 'net';
-import {ReconnectingSocket, RedisClient} from '../node';
+import {StandaloneClient} from '../standalone';
 import {printTree} from 'json-joy/es2020/util/print/printTree';
+import {ReconnectingSocket} from '../util/ReconnectingSocket';
 import type {Printable} from 'json-joy/es2020/util/print/types';
 import type {RedisClientCodecOpts} from '../types';
 import type {RedisClusterShardsResponse} from './types';
@@ -19,9 +20,15 @@ export interface RedisClusterNodeClientOpts {
   tls?: boolean;
   /** TLS options. */
   secureContext?: tls.SecureContextOptions;
+
+  /**
+   * Maximum number of bytes to buffer while the socket is not connected.
+   * Defaults to 1MB.
+   */
+  maxBufferSize?: number;
 }
 
-export class RedisClusterNodeClient extends RedisClient implements Printable {
+export class RedisClusterNodeClient extends StandaloneClient implements Printable {
   /** Hostname of the Redis node. */
   public readonly host: string;
   /** Port of the Redis node. */
@@ -38,6 +45,7 @@ export class RedisClusterNodeClient extends RedisClient implements Printable {
                 ...opts.secureContext,
               })
           : () => net.connect({host, port}),
+        maxBufferSize: opts.maxBufferSize,
       }),
       user: opts.user,
       pwd: opts.pwd,

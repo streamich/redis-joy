@@ -3,15 +3,16 @@ import {RespStreamingDecoder} from 'json-joy/es2020/json-pack/resp/RespStreaming
 import {RespPush} from 'json-joy/es2020/json-pack/resp/extensions';
 import {FanOut} from 'thingies/es2020/fanout';
 import {Defer} from 'thingies/es2020/Defer';
-import {ReconnectingSocket} from './ReconnectingSocket';
-import {RedisCall, callNoRes} from './RedisCall';
+import {StandaloneCall, callNoRes} from './StandaloneCall';
 import {isPushMessage, isMultiCmd, isPushPmessage, isPushSmessage} from '../util/commands';
 import {AvlMap} from 'json-joy/es2020/util/trees/avl/AvlMap';
 import {bufferToUint8Array} from 'json-joy/es2020/util/buffers/bufferToUint8Array';
 import {cmpUint8Array, ascii} from '../util/buf';
+import {ReconnectingSocket} from '../util/ReconnectingSocket';
 import type {Cmd, MultiCmd, RedisClientCodecOpts} from '../types';
 import type {RedisHelloResponse} from './types';
 
+const EMPTY_CMD = <Cmd>[];
 const HELLO = ascii`HELLO`;
 const AUTH = ascii`AUTH`;
 const SUBSCRIBE = ascii`SUBSCRIBE`;
@@ -29,7 +30,7 @@ export interface RedisClientOpts extends RedisClientCodecOpts {
   pwd?: string;
 }
 
-export class RedisClient {
+export class StandaloneClient {
   protected readonly socket: ReconnectingSocket;
   public readonly subs = new AvlMap<Uint8Array, FanOut<Uint8Array>>(cmpUint8Array);
   public readonly psubs = new AvlMap<Uint8Array, FanOut<[channel: Uint8Array, message: Uint8Array]>>(cmpUint8Array);
@@ -53,7 +54,27 @@ export class RedisClient {
           this.__whenReady.reject(error);
           this.onError.emit(error);
         });
+      const {subs, psubs, ssubs} = this;
+      if (!subs.isEmpty()) {
+        const subscribeCmd = [SUBSCRIBE];
+        subs.forEach((node) => subscribeCmd.push(node.k));
+        if (subscribeCmd.length > 1) this.cmdFnF(subscribeCmd);
+      }
+      if (!psubs.isEmpty()) {
+        const subscribeCmd = [PSUBSCRIBE];
+        psubs.forEach((node) => subscribeCmd.push(node.k));
+        if (subscribeCmd.length > 1) this.cmdFnF(subscribeCmd);
+      }
+      if (!ssubs.isEmpty()) {
+        const subscribeCmd = [SSUBSCRIBE];
+        ssubs.forEach((node) => subscribeCmd.push(node.k));
+        if (subscribeCmd.length > 1) this.cmdFnF(subscribeCmd);
+      }
     });
+  }
+
+  public isConnected(): boolean {
+    return this.socket.isConnected();
   }
 
   // ------------------------------------------------------------------- Events
@@ -67,7 +88,7 @@ export class RedisClient {
   // ------------------------------------------------------------ Socket writes
 
   protected readonly encoder: RespEncoder;
-  protected readonly requests: RedisCall[] = [];
+  protected readonly requests: StandaloneCall[] = [];
   protected encodingTimer?: NodeJS.Immediate = undefined;
 
   protected scheduleWrite() {
@@ -85,6 +106,7 @@ export class RedisClient {
       for (let i = 0; i < length; i++) {
         const call = requests[i];
         const cmd = call.args;
+        call.args = EMPTY_CMD;
         if (isMultiCmd(cmd)) {
           const length = cmd.length;
           if (call.utf8) for (let i = 0; i < length; i++) encoder.writeCmdUtf8(cmd[i]);
@@ -107,7 +129,7 @@ export class RedisClient {
   // ------------------------------------------------------------- Socket reads
 
   protected readonly decoder: RespStreamingDecoder;
-  protected readonly responses: Array<null | RedisCall> = [];
+  protected readonly responses: Array<null | StandaloneCall> = [];
   protected decodingTimer?: NodeJS.Immediate = undefined;
 
   protected scheduleRead() {
@@ -150,7 +172,7 @@ export class RedisClient {
           i++;
           continue;
         }
-        if (call instanceof RedisCall) {
+        if (call instanceof StandaloneCall) {
           const res = call.response;
           if (msg instanceof Error) res.reject(msg);
           else res.resolve(msg);
@@ -176,7 +198,7 @@ export class RedisClient {
 
   // -------------------------------------------------------- Command execution
 
-  public async call(call: RedisCall): Promise<unknown> {
+  public async call(call: StandaloneCall): Promise<unknown> {
     const noResponse = call.noRes;
     this.requests.push(call);
     this.responses.push(noResponse ? null : call);
@@ -185,7 +207,7 @@ export class RedisClient {
   }
 
   public async cmd(args: Cmd | MultiCmd, opts?: CmdOpts): Promise<unknown> {
-    const call = new RedisCall(args);
+    const call = new StandaloneCall(args);
     if (opts) {
       if (opts.utf8) call.utf8 = true;
       if (opts.utf8Res) call.utf8Res = true;
@@ -194,7 +216,7 @@ export class RedisClient {
     return this.call(call);
   }
 
-  private callFnf(call: RedisCall): void {
+  private callFnf(call: StandaloneCall): void {
     this.requests.push(call);
     this.responses.push(null);
     this.scheduleWrite();
@@ -209,7 +231,7 @@ export class RedisClient {
   /** Authenticate and negotiate protocol version. */
   public async hello(protocol: 2 | 3, pwd?: string, usr: string = ''): Promise<RedisHelloResponse> {
     const args: Cmd = pwd ? [HELLO, protocol, AUTH, usr, pwd] : [HELLO, protocol];
-    return (await this.call(new RedisCall(args))) as RedisHelloResponse;
+    return (await this.call(new StandaloneCall(args))) as RedisHelloResponse;
   }
 
   // --------------------------------------------------------- Pub/sub commands
@@ -224,7 +246,7 @@ export class RedisClient {
     if (!fanout) {
       fanout = new FanOut<Uint8Array>();
       this.subs.set(channelBuf, fanout);
-      const call = new RedisCall([SUBSCRIBE, channelBuf]);
+      const call = new StandaloneCall([SUBSCRIBE, channelBuf]);
       this.call(call);
       subscribed = call.response.promise as Promise<void>;
     } else {
@@ -279,7 +301,7 @@ export class RedisClient {
     if (!fanout) {
       fanout = new FanOut<[Uint8Array, Uint8Array]>();
       this.psubs.set(patternBuf, fanout);
-      const call = new RedisCall([PSUBSCRIBE, patternBuf]);
+      const call = new StandaloneCall([PSUBSCRIBE, patternBuf]);
       this.call(call);
       subscribed = call.response.promise as Promise<void>;
     } else {
@@ -329,7 +351,7 @@ export class RedisClient {
     if (!fanout) {
       fanout = new FanOut<Uint8Array>();
       this.ssubs.set(channelBuf, fanout);
-      const call = new RedisCall([SSUBSCRIBE, channelBuf]);
+      const call = new StandaloneCall([SSUBSCRIBE, channelBuf]);
       this.call(call);
       subscribed = call.response.promise as Promise<void>;
     } else {
@@ -375,4 +397,4 @@ export class RedisClient {
   }
 }
 
-export type CmdOpts = Partial<Pick<RedisCall, 'utf8' | 'utf8Res' | 'noRes'>>;
+export type CmdOpts = Partial<Pick<StandaloneCall, 'utf8' | 'utf8Res' | 'noRes'>>;

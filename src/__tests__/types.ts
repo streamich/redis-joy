@@ -1,5 +1,5 @@
 import {RedisCluster} from '../cluster/RedisCluster';
-import {RedisClient} from '../node';
+import {StandaloneClient} from '../standalone';
 
 export type TestSetup = ClusterTestSetup;
 export type ClusterTestSetup = () => Promise<{
@@ -13,6 +13,17 @@ export type StandaloneTestSetup = () => Promise<{
   client: StandaloneTestClient;
 }>;
 export type StandaloneTestClient = Pick<
-  RedisClient,
-  'cmd' | 'subscribe' | 'sub' | 'publish' | 'pub' | 'psubscribe' | 'psub' | 'ssubscribe' | 'ssub' | 'spub' | 'spublish'
+  StandaloneClient,
+  | 'cmd'
+  | 'subscribe'
+  | 'sub'
+  | 'publish'
+  | 'pub'
+  | 'psubscribe'
+  | 'psub'
+  | 'ssubscribe'
+  | 'ssub'
+  | 'spub'
+  | 'spublish'
+  | 'isConnected'
 >;

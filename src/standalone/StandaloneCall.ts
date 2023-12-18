@@ -2,7 +2,7 @@ import {Defer} from 'thingies/es2020/Defer';
 import type {Cmd, MultiCmd} from '../types';
 
 export const callNoRes = (args: Cmd | MultiCmd) => {
-  const call = new RedisCall(args);
+  const call = new StandaloneCall(args);
   call.noRes = true;
   return call;
 };
@@ -10,7 +10,7 @@ export const callNoRes = (args: Cmd | MultiCmd) => {
 /**
  * Represents a single Redis request/response command call.
  */
-export class RedisCall {
+export class StandaloneCall {
   /**
    * Whether to encode command arguments as UTF-8 strings.
    */
@@ -29,5 +29,5 @@ export class RedisCall {
 
   public readonly response = new Defer<unknown>();
 
-  constructor(public readonly args: Cmd | MultiCmd) {}
+  constructor(public args: Cmd | MultiCmd) {}
 }
