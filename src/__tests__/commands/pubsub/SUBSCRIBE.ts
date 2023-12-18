@@ -1,4 +1,4 @@
-import {tick, until} from 'thingies';
+import {until} from 'thingies';
 import {StandaloneTestSetup} from '../../types';
 
 export const standalone = (setup: StandaloneTestSetup) => {

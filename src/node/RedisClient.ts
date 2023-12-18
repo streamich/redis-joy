@@ -5,7 +5,7 @@ import {FanOut} from 'thingies/es2020/fanout';
 import {Defer} from 'thingies/es2020/Defer';
 import {ReconnectingSocket} from './ReconnectingSocket';
 import {RedisCall, callNoRes} from './RedisCall';
-import {isPushMessage, isMultiCmd} from '../util/commands';
+import {isPushMessage, isMultiCmd, isPushPmessage} from '../util/commands';
 import {AvlMap} from 'json-joy/es2020/util/trees/avl/AvlMap';
 import {bufferToUint8Array} from 'json-joy/es2020/util/buffers/bufferToUint8Array';
 import {cmpUint8Array, ascii} from '../util/buf';
@@ -138,6 +138,11 @@ export class RedisClient {
             if (fanout) fanout.emit(val[2] as Uint8Array);
             continue;
           }
+          if (isPushPmessage(val)) {
+            const fanout = this.psubs.get(val[1] as Uint8Array);
+            if (fanout) fanout.emit([val[2] as Uint8Array, val[3] as Uint8Array]);
+            continue;
+          }
           if (call) call.response.resolve(undefined);
           i++;
           continue;
@@ -256,6 +261,50 @@ export class RedisClient {
 
   public pub(channel: Uint8Array | string, message: Uint8Array | string): void {
     return this.cmdFnF([PUBLISH, channel, message]);
+  }
+
+  public psubscribe(pattern: Uint8Array | string, listener: ((message: [channel: Uint8Array, message: Uint8Array]) => void)): [unsubscribe: () => void, subscribed: Promise<void>] {
+    const patternBuf = typeof pattern === 'string' ? bufferToUint8Array(Buffer.from(pattern)) : pattern;
+    let fanout = this.psubs.get(patternBuf);
+    let subscribed: Promise<void>;
+    if (!fanout) {
+      fanout = new FanOut<[Uint8Array, Uint8Array]>();
+      this.psubs.set(patternBuf, fanout);
+      const call = new RedisCall([PSUBSCRIBE, patternBuf]);
+      this.call(call);
+      subscribed = call.response.promise as Promise<void>;
+    } else {
+      subscribed = Promise.resolve();
+    }
+    const unsubscribe = fanout.listen(listener);
+    return [
+      () => {
+        unsubscribe();
+        if (fanout!.listeners.size === 0) {
+          this.psubs.del(patternBuf);
+          this.cmdFnF([PUNSUBSCRIBE, patternBuf]);
+        }
+      },
+      subscribed,
+    ];
+  }
+
+  public psub(pattern: Uint8Array | string, listener: ((message: [channel: Uint8Array, message: Uint8Array]) => void)): (() => void) {
+    const patternBuf = typeof pattern === 'string' ? bufferToUint8Array(Buffer.from(pattern)) : pattern;
+    let fanout = this.psubs.get(patternBuf);
+    if (!fanout) {
+      fanout = new FanOut<[Uint8Array, Uint8Array]>();
+      this.psubs.set(patternBuf, fanout);
+      this.cmdFnF([PSUBSCRIBE, patternBuf]);
+    }
+    const unsubscribe = fanout.listen(listener);
+    return () => {
+      unsubscribe();
+      if (fanout!.listeners.size === 0) {
+        this.psubs.del(patternBuf);
+        this.cmdFnF([PUNSUBSCRIBE, patternBuf]);
+      }
+    };
   }
 }
 

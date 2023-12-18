@@ -14,11 +14,17 @@ export const cmpUint8Array = (a: Uint8Array, b: Uint8Array): 1 | 0 | -1 => {
   return 0;
 };
 
-export const ascii = ([txt]: TemplateStringsArray) => {
+export const ascii = (txt: TemplateStringsArray | string | [string]): Uint8Array => {
+  if (typeof txt === 'string') return ascii([txt]);
+  [txt] = txt;
   const len = txt.length;
   const res = new Uint8Array(len);
   for (let i = 0; i < len; i++) res[i] = txt.charCodeAt(i);
   return res;
 };
 
-export const utf8 = ([txt]: TemplateStringsArray) => bufferToUint8Array(Buffer.from(txt, 'utf8'));
+export const utf8 = (txt: TemplateStringsArray | [string] | string): Uint8Array => {
+  if (typeof txt === 'string') return utf8([txt]);
+  [txt] = txt;
+  return bufferToUint8Array(Buffer.from(txt, 'utf8'));
+};

@@ -12,4 +12,4 @@ export type ClusterTestClient = Pick<RedisCluster, 'cmd'>;
 export type StandaloneTestSetup = () => Promise<{
   client: StandaloneTestClient;
 }>;
-export type StandaloneTestClient = Pick<RedisClient, 'cmd' | 'subscribe' | 'sub' | 'publish' | 'pub'>;
+export type StandaloneTestClient = Pick<RedisClient, 'cmd' | 'subscribe' | 'sub' | 'publish' | 'pub' | 'psubscribe' | 'psub'>;
