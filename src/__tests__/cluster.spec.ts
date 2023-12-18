@@ -19,19 +19,19 @@ if (process.env.TEST_CLUSTER) {
   //   console.error('onError', err);
   // });
   client.start();
-  
+
   const setupCluster: ClusterTestSetup = async () => {
     await client.whenRouterReady();
     return {client};
   };
-  
+
   describe('cluster', () => {
     commands.run(setupCluster);
   });
-  
+
   afterAll(() => {
     client.stop();
-  });    
+  });
 } else {
   test.todo('To enable cluster tests, set TEST_CLUSTER=1 in your environment variables.');
 }
