@@ -12,6 +12,7 @@ import {cmpUint8Array, ascii} from '../util/buf';
 import type {Cmd, MultiCmd, RedisClientCodecOpts} from '../types';
 import type {RedisHelloResponse} from './types';
 
+const EMPTY_CMD = <Cmd>[];
 const HELLO = ascii`HELLO`;
 const AUTH = ascii`AUTH`;
 const SUBSCRIBE = ascii`SUBSCRIBE`;
@@ -53,6 +54,9 @@ export class RedisClient {
           this.__whenReady.reject(error);
           this.onError.emit(error);
         });
+      // const subscribeCmd = [SUBSCRIBE];
+      // this.subs.forEach((node) => subscribeCmd.push(node.k));
+      // if (subscribeCmd.length > 1) this.cmdFnF(subscribeCmd);
     });
   }
 
@@ -85,6 +89,7 @@ export class RedisClient {
       for (let i = 0; i < length; i++) {
         const call = requests[i];
         const cmd = call.args;
+        call.args = EMPTY_CMD;
         if (isMultiCmd(cmd)) {
           const length = cmd.length;
           if (call.utf8) for (let i = 0; i < length; i++) encoder.writeCmdUtf8(cmd[i]);
