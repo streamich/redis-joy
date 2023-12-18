@@ -19,6 +19,9 @@ jobs:
         with:
           node-version: ${{ matrix.node-version }}
           cache: yarn
+      - uses: shogo82148/actions-setup-redis@v1
+        with:
+          redis-version: "7.x"
       - run: yarn install --frozen-lockfile
       - run: yarn prettier:check
       - run: yarn lint
