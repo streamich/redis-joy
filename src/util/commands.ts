@@ -62,3 +62,24 @@ export const isPushPmessage = (val: unknown): boolean => {
   if (typeof type === 'string') return type === 'pmessage';
   return false;
 };
+
+export const isPushSmessage = (val: unknown): boolean => {
+  if (!(val instanceof Array)) return false;
+  const type = val[0];
+  if (type instanceof Uint8Array) {
+    if (type.length !== 8) return false;
+    return (
+      type[0] === 115 && // s
+      type[1] === 109 && // m
+      type[2] === 101 && // e
+      type[3] === 115 && // s
+      type[4] === 115 && // s
+      type[5] === 97 && // a
+      type[6] === 103 && // g
+      type[7] === 101
+    ); // e
+  }
+  if (typeof type === 'string') return type === 'smessage';
+  return false;
+};
+

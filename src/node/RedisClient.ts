@@ -5,7 +5,7 @@ import {FanOut} from 'thingies/es2020/fanout';
 import {Defer} from 'thingies/es2020/Defer';
 import {ReconnectingSocket} from './ReconnectingSocket';
 import {RedisCall, callNoRes} from './RedisCall';
-import {isPushMessage, isMultiCmd, isPushPmessage} from '../util/commands';
+import {isPushMessage, isMultiCmd, isPushPmessage, isPushSmessage} from '../util/commands';
 import {AvlMap} from 'json-joy/es2020/util/trees/avl/AvlMap';
 import {bufferToUint8Array} from 'json-joy/es2020/util/buffers/bufferToUint8Array';
 import {cmpUint8Array, ascii} from '../util/buf';
@@ -20,6 +20,7 @@ const UNSUBSCRIBE = ascii`UNSUBSCRIBE`;
 const PSUBSCRIBE = ascii`PSUBSCRIBE`;
 const PUNSUBSCRIBE = ascii`PUNSUBSCRIBE`;
 const SSUBSCRIBE = ascii`SSUBSCRIBE`;
+const SPUBLISH = ascii`SPUBLISH`;
 const SUNSUBSCRIBE = ascii`SUNSUBSCRIBE`;
 
 export interface RedisClientOpts extends RedisClientCodecOpts {
@@ -140,6 +141,11 @@ export class RedisClient {
             if (fanout) fanout.emit([val[2] as Uint8Array, val[3] as Uint8Array]);
             continue;
           }
+          if (isPushSmessage(val)) {
+            const fanout = this.ssubs.get(val[1] as Uint8Array);
+            if (fanout) fanout.emit(val[2] as Uint8Array);
+            continue;
+          }
           if (call) call.response.resolve(undefined);
           i++;
           continue;
@@ -205,6 +211,8 @@ export class RedisClient {
     const args: Cmd = pwd ? [HELLO, protocol, AUTH, usr, pwd] : [HELLO, protocol];
     return (await this.call(new RedisCall(args))) as RedisHelloResponse;
   }
+
+  // --------------------------------------------------------- Pub/sub commands
 
   public subscribe(
     channel: Uint8Array | string,
@@ -309,6 +317,58 @@ export class RedisClient {
         this.cmdFnF([PUNSUBSCRIBE, patternBuf]);
       }
     };
+  }
+
+  public ssubscribe(channel: Uint8Array | string, listener: (message: Uint8Array) => void): [unsubscribe: () => void, subscribed: Promise<void>] {
+    const channelBuf = typeof channel === 'string' ? bufferToUint8Array(Buffer.from(channel)) : channel;
+    let fanout = this.ssubs.get(channelBuf);
+    let subscribed: Promise<void>;
+    if (!fanout) {
+      fanout = new FanOut<Uint8Array>();
+      this.ssubs.set(channelBuf, fanout);
+      const call = new RedisCall([SSUBSCRIBE, channelBuf]);
+      this.call(call);
+      subscribed = call.response.promise as Promise<void>;
+    } else {
+      subscribed = Promise.resolve();
+    }
+    const unsubscribe = fanout.listen(listener);
+    return [
+      () => {
+        unsubscribe();
+        if (fanout!.listeners.size === 0) {
+          this.ssubs.del(channelBuf);
+          this.cmdFnF([SUNSUBSCRIBE, channelBuf]);
+        }
+      },
+      subscribed,
+    ];
+  }
+
+  public ssub(channel: Uint8Array | string, listener: (message: Uint8Array) => void): () => void {
+    const channelBuf = typeof channel === 'string' ? bufferToUint8Array(Buffer.from(channel)) : channel;
+    let fanout = this.ssubs.get(channelBuf);
+    if (!fanout) {
+      fanout = new FanOut<Uint8Array>();
+      this.ssubs.set(channelBuf, fanout);
+      this.cmdFnF([SSUBSCRIBE, channelBuf]);
+    }
+    const unsubscribe = fanout.listen(listener);
+    return () => {
+      unsubscribe();
+      if (fanout!.listeners.size === 0) {
+        this.ssubs.del(channelBuf);
+        this.cmdFnF([SUNSUBSCRIBE, channelBuf]);
+      }
+    };
+  }
+
+  public async spublish(channel: Uint8Array | string, message: Uint8Array | string): Promise<number> {
+    return (await this.cmd([SPUBLISH, channel, message])) as number;
+  }
+
+  public spub(channel: Uint8Array | string, message: Uint8Array | string): void {
+    return this.cmdFnF([SPUBLISH, channel, message]);
   }
 }
 

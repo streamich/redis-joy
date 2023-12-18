@@ -14,5 +14,5 @@ export type StandaloneTestSetup = () => Promise<{
 }>;
 export type StandaloneTestClient = Pick<
   RedisClient,
-  'cmd' | 'subscribe' | 'sub' | 'publish' | 'pub' | 'psubscribe' | 'psub'
+  'cmd' | 'subscribe' | 'sub' | 'publish' | 'pub' | 'psubscribe' | 'psub' | 'ssubscribe' | 'ssub' | 'spub' | 'spublish'
 >;

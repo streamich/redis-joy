@@ -127,5 +127,22 @@ export const standalone = (setup: StandaloneTestSetup) => {
         [ascii(pattern), new Uint8Array([1])],
       ]);
     });
+
+    test('can SUBSCRIBE and PSUBSCRIBE to the same message', async () => {
+      const {client} = await setup();
+      const {client: client2} = await setup();
+      const channel = 'the_message_' + Date.now();
+      const msgs: unknown[] = [];
+      const [, subscribed1] = client.subscribe(channel, (recv) => {
+        msgs.push(recv);
+      });
+      const [, subscribed2] = client2.psubscribe(channel, (recv) => {
+        msgs.push(recv);
+      });
+      await subscribed1;
+      await subscribed2;
+      await client.publish(channel, new Uint8Array([1]));
+      await until(() => msgs.length === 2);
+    });
   });
 };
