@@ -8,16 +8,16 @@ export const standalone = (setup: StandaloneTestSetup) => {
       const {client} = await setup();
       const pattern = 's*bscribe_channel_just_sub_' + Date.now();
       client.psub(pattern, () => {});
-      await new Promise(resolve => setTimeout(resolve, 5));
+      await new Promise((resolve) => setTimeout(resolve, 5));
     });
 
     test('can un-subscribe from a pattern', async () => {
       const {client} = await setup();
       const channel = 's*bscribe_channel_sub_unsub_' + Date.now();
       const unsubscribe = client.psub(channel, (recv) => {});
-      await new Promise(resolve => setTimeout(resolve, 5));
+      await new Promise((resolve) => setTimeout(resolve, 5));
       unsubscribe();
-      await new Promise(resolve => setTimeout(resolve, 5));
+      await new Promise((resolve) => setTimeout(resolve, 5));
     });
 
     test('can receive a message by pattern', async () => {

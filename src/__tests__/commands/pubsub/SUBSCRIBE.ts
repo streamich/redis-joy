@@ -7,16 +7,16 @@ export const standalone = (setup: StandaloneTestSetup) => {
       const {client} = await setup();
       const channel = 'subscribe_channel_just_sub_' + Date.now();
       client.sub(channel, (recv) => {});
-      await new Promise(resolve => setTimeout(resolve, 5));
+      await new Promise((resolve) => setTimeout(resolve, 5));
     });
 
     test('can un-subscribe from a channel', async () => {
       const {client} = await setup();
       const channel = 'subscribe_channel_sub_unsub_' + Date.now();
       const unsubscribe = client.sub(channel, (recv) => {});
-      await new Promise(resolve => setTimeout(resolve, 5));
+      await new Promise((resolve) => setTimeout(resolve, 5));
       unsubscribe();
-      await new Promise(resolve => setTimeout(resolve, 5));
+      await new Promise((resolve) => setTimeout(resolve, 5));
     });
 
     test('can receive a message on a channel', async () => {
@@ -42,11 +42,7 @@ export const standalone = (setup: StandaloneTestSetup) => {
       client.pub(channel, new Uint8Array([2]));
       client.pub(channel, new Uint8Array([3]));
       await until(() => msgs.length === 3);
-      expect(msgs).toEqual([
-        new Uint8Array([1]),
-        new Uint8Array([2]),
-        new Uint8Array([3]),
-      ]);
+      expect(msgs).toEqual([new Uint8Array([1]), new Uint8Array([2]), new Uint8Array([3])]);
     });
 
     test('does not receive more messages after un-subscription', async () => {
@@ -61,10 +57,7 @@ export const standalone = (setup: StandaloneTestSetup) => {
       unsubscribe();
       await client.publish(channel, new Uint8Array([3]));
       await until(() => msgs.length === 2);
-      expect(msgs).toEqual([
-        new Uint8Array([1]),
-        new Uint8Array([2]),
-      ]);
+      expect(msgs).toEqual([new Uint8Array([1]), new Uint8Array([2])]);
     });
 
     test('can subscribe twice from the same client', async () => {
@@ -79,10 +72,7 @@ export const standalone = (setup: StandaloneTestSetup) => {
       });
       await client.publish(channel, new Uint8Array([1]));
       await until(() => msgs.length === 2);
-      expect(msgs).toEqual([
-        new Uint8Array([1]),
-        new Uint8Array([1]),
-      ]);
+      expect(msgs).toEqual([new Uint8Array([1]), new Uint8Array([1])]);
     });
 
     test('can subscribe twice from the same client and unsubscribe on subscription', async () => {
@@ -121,10 +111,7 @@ export const standalone = (setup: StandaloneTestSetup) => {
       await subscribed2;
       await client.publish(channel, new Uint8Array([1]));
       await until(() => msgs.length === 2);
-      expect(msgs).toEqual([
-        new Uint8Array([1]),
-        new Uint8Array([1]),
-      ]);
+      expect(msgs).toEqual([new Uint8Array([1]), new Uint8Array([1])]);
     });
   });
 };

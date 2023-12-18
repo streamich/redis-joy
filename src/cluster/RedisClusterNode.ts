@@ -12,10 +12,7 @@ const annotate = (node: RedisClusterNode, nodeInfo: RedisClusterShardsResponseNo
 };
 
 export class RedisClusterNode implements Printable {
-  public static fromNodeInfo = (
-    cluster: RedisCluster,
-    nodeInfo: RedisClusterShardsResponseNode,
-  ): RedisClusterNode => {
+  public static fromNodeInfo = (cluster: RedisCluster, nodeInfo: RedisClusterShardsResponseNode): RedisClusterNode => {
     const id = nodeInfo.id + '';
     const port = Number(nodeInfo.port ? nodeInfo.port : nodeInfo['tls-port']);
     if (!port) throw new Error('NO_PORT');

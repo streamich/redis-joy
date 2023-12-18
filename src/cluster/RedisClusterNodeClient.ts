@@ -48,7 +48,6 @@ export class RedisClusterNodeClient extends RedisClient implements Printable {
     this.port = port;
   }
 
-
   // -------------------------------------------------------- Built-in commands
 
   public async clusterMyId(): Promise<string> {
@@ -65,7 +64,6 @@ export class RedisClusterNodeClient extends RedisClient implements Printable {
   public clusterShards(): Promise<RedisClusterShardsResponse> {
     return this.cmd(['CLUSTER', 'SHARDS'], {utf8Res: true}) as Promise<RedisClusterShardsResponse>;
   }
-
 
   // ---------------------------------------------------------------- Printable
 

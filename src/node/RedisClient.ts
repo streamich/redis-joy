@@ -12,15 +12,15 @@ import {cmpUint8Array, ascii} from '../util/buf';
 import type {Cmd, MultiCmd, RedisClientCodecOpts} from '../types';
 import type {RedisHelloResponse} from './types';
 
-const HELLO = ascii `HELLO`;
-const AUTH = ascii `AUTH`;
-const SUBSCRIBE = ascii `SUBSCRIBE`;
-const PUBLISH = ascii `PUBLISH`;
-const UNSUBSCRIBE = ascii `UNSUBSCRIBE`;
-const PSUBSCRIBE = ascii `PSUBSCRIBE`;
-const PUNSUBSCRIBE = ascii `PUNSUBSCRIBE`;
-const SSUBSCRIBE = ascii `SSUBSCRIBE`;
-const SUNSUBSCRIBE = ascii `SUNSUBSCRIBE`;
+const HELLO = ascii`HELLO`;
+const AUTH = ascii`AUTH`;
+const SUBSCRIBE = ascii`SUBSCRIBE`;
+const PUBLISH = ascii`PUBLISH`;
+const UNSUBSCRIBE = ascii`UNSUBSCRIBE`;
+const PSUBSCRIBE = ascii`PSUBSCRIBE`;
+const PUNSUBSCRIBE = ascii`PUNSUBSCRIBE`;
+const SSUBSCRIBE = ascii`SSUBSCRIBE`;
+const SUNSUBSCRIBE = ascii`SUNSUBSCRIBE`;
 
 export interface RedisClientOpts extends RedisClientCodecOpts {
   socket: ReconnectingSocket;
@@ -55,7 +55,6 @@ export class RedisClient {
     });
   }
 
-
   // ------------------------------------------------------------------- Events
 
   private readonly __whenReady = new Defer<void>();
@@ -63,7 +62,6 @@ export class RedisClient {
   public readonly onReady = new FanOut<void>();
   public readonly onError = new FanOut<Error | unknown>();
   public readonly onPush = new FanOut<RespPush>();
-
 
   // ------------------------------------------------------------ Socket writes
 
@@ -104,7 +102,6 @@ export class RedisClient {
       this.socket.reconnect();
     }
   };
-
 
   // ------------------------------------------------------------- Socket reads
 
@@ -149,7 +146,8 @@ export class RedisClient {
         }
         if (call instanceof RedisCall) {
           const res = call.response;
-          if (msg instanceof Error) res.reject(msg); else res.resolve(msg);
+          if (msg instanceof Error) res.reject(msg);
+          else res.resolve(msg);
         } else if (call !== null) throw new Error('UNEXPECTED_RESPONSE');
         i++;
       }
@@ -160,7 +158,6 @@ export class RedisClient {
     }
   };
 
-
   // -------------------------------------------------------------- Life cycles
 
   public start() {
@@ -170,7 +167,6 @@ export class RedisClient {
   public stop() {
     this.socket.stop();
   }
-
 
   // -------------------------------------------------------- Command execution
 
@@ -202,16 +198,18 @@ export class RedisClient {
     this.callFnf(callNoRes(args));
   }
 
-
   // -------------------------------------------------------- Built-in commands
 
   /** Authenticate and negotiate protocol version. */
   public async hello(protocol: 2 | 3, pwd?: string, usr: string = ''): Promise<RedisHelloResponse> {
     const args: Cmd = pwd ? [HELLO, protocol, AUTH, usr, pwd] : [HELLO, protocol];
-    return await this.call(new RedisCall(args)) as RedisHelloResponse;
+    return (await this.call(new RedisCall(args))) as RedisHelloResponse;
   }
 
-  public subscribe(channel: Uint8Array | string, listener: (message: Uint8Array) => void): [unsubscribe: () => void, subscribed: Promise<void>] {
+  public subscribe(
+    channel: Uint8Array | string,
+    listener: (message: Uint8Array) => void,
+  ): [unsubscribe: () => void, subscribed: Promise<void>] {
     const channelBuf = typeof channel === 'string' ? bufferToUint8Array(Buffer.from(channel)) : channel;
     let fanout = this.subs.get(channelBuf);
     let subscribed: Promise<void>;
@@ -237,7 +235,7 @@ export class RedisClient {
     ];
   }
 
-  public sub(channel: Uint8Array | string, listener: (message: Uint8Array) => void): (() => void) {
+  public sub(channel: Uint8Array | string, listener: (message: Uint8Array) => void): () => void {
     const channelBuf = typeof channel === 'string' ? bufferToUint8Array(Buffer.from(channel)) : channel;
     let fanout = this.subs.get(channelBuf);
     if (!fanout) {
@@ -256,14 +254,17 @@ export class RedisClient {
   }
 
   public async publish(channel: Uint8Array | string, message: Uint8Array | string): Promise<number> {
-    return await this.cmd([PUBLISH, channel, message]) as number;
+    return (await this.cmd([PUBLISH, channel, message])) as number;
   }
 
   public pub(channel: Uint8Array | string, message: Uint8Array | string): void {
     return this.cmdFnF([PUBLISH, channel, message]);
   }
 
-  public psubscribe(pattern: Uint8Array | string, listener: ((message: [channel: Uint8Array, message: Uint8Array]) => void)): [unsubscribe: () => void, subscribed: Promise<void>] {
+  public psubscribe(
+    pattern: Uint8Array | string,
+    listener: (message: [channel: Uint8Array, message: Uint8Array]) => void,
+  ): [unsubscribe: () => void, subscribed: Promise<void>] {
     const patternBuf = typeof pattern === 'string' ? bufferToUint8Array(Buffer.from(pattern)) : pattern;
     let fanout = this.psubs.get(patternBuf);
     let subscribed: Promise<void>;
@@ -289,7 +290,10 @@ export class RedisClient {
     ];
   }
 
-  public psub(pattern: Uint8Array | string, listener: ((message: [channel: Uint8Array, message: Uint8Array]) => void)): (() => void) {
+  public psub(
+    pattern: Uint8Array | string,
+    listener: (message: [channel: Uint8Array, message: Uint8Array]) => void,
+  ): () => void {
     const patternBuf = typeof pattern === 'string' ? bufferToUint8Array(Buffer.from(pattern)) : pattern;
     let fanout = this.psubs.get(patternBuf);
     if (!fanout) {

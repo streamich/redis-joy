@@ -24,7 +24,7 @@ const setupCluster: StandaloneTestSetup = async () => {
   // client.onPush.listen((push) => {
   //   console.log(push);
   // });
-  client.start();  
+  client.start();
   clients.push(client);
   await client.whenReady;
   return {client};

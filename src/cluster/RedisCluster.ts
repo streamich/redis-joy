@@ -54,7 +54,6 @@ export class RedisCluster implements Printable {
     this.decoder = opts.decoder ?? new RespStreamingDecoder();
   }
 
-
   // ------------------------------------------------------------------- Events
 
   /** Emitted on unexpected and asynchronous errors. */
@@ -62,7 +61,6 @@ export class RedisCluster implements Printable {
 
   /** Emitted each time router table is rebuilt. */
   public readonly onRouter = new FanOut<void>();
-
 
   // ---------------------------------------------------- Life cycle management
 
@@ -82,7 +80,6 @@ export class RedisCluster implements Printable {
     this.stopped = true;
     this.clients.forEach((client) => client.stop());
   }
-
 
   // ---------------------------------------------- Build initial routing table
 
@@ -126,7 +123,6 @@ export class RedisCluster implements Printable {
     });
   }
 
-
   // ----------------------------------------------------- Router table rebuild
 
   private isRebuildingRouteTable: boolean = false;
@@ -162,7 +158,6 @@ export class RedisCluster implements Printable {
     // if (this.stopped) return;
     // await this.router.rebuild(client);
   }
-
 
   // ------------------------------------------------------ Client construction
 
@@ -214,7 +209,6 @@ export class RedisCluster implements Printable {
     };
     return new RedisClusterNodeClient(conf, codec);
   }
-
 
   // ----------------------------------------------------------- Client picking
 
@@ -318,7 +312,6 @@ export class RedisCluster implements Printable {
     }
     return await this.call(call);
   }
-
 
   // ---------------------------------------------------------------- Printable
 
