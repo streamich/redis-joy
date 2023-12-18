@@ -34,3 +34,16 @@ export const run = (setup: TestSetup) => {
     });
   });
 };
+
+export const standalone = (setup: TestSetup) => {
+  describe('GET', () => {
+    test('can get a key after disconnect', async () => {
+      const {client} = await setup();
+      const key = 'fetch_existing_key_disconnect_' + Date.now();
+      await client.cmd(['SET', key, '42']);
+      (client as any).socket.socket.destroy();
+      const res = await client.cmd(['GET', key], {utf8Res: true});
+      expect(res).toBe('42');
+    });
+  });
+};

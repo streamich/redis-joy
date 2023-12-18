@@ -29,5 +29,5 @@ export class RedisCall {
 
   public readonly response = new Defer<unknown>();
 
-  constructor(public readonly args: Cmd | MultiCmd) {}
+  constructor(public args: Cmd | MultiCmd) {}
 }

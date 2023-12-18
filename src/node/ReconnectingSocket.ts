@@ -25,6 +25,12 @@ export interface ReconnectingSocketOpts {
    * Number of milliseconds to wait before giving up on a connection attempt.
    */
   connectionTimeout: number;
+
+  /**
+   * Maximum number of bytes to buffer while the socket is not connected.
+   * Defaults to 1MB.
+   */
+  maxBufferSize: number;
 }
 
 /**
@@ -47,6 +53,8 @@ export class ReconnectingSocket {
   protected connectionTimeoutTimer?: NodeJS.Timeout;
   protected stopped = false;
   protected reffed = true;
+  protected buffer: Uint8Array[] = [];
+  protected bufferSize: number = 0;
 
   public readonly onReady = new FanOut<void>();
   public readonly onData = new FanOut<Buffer>();
@@ -58,6 +66,7 @@ export class ReconnectingSocket {
       minTimeout: 1000,
       maxTimeout: 1000 * 60 * 3,
       connectionTimeout: 1000 * 10,
+      maxBufferSize: 1024 * 1024,
       ...opts,
     };
   }
@@ -87,6 +96,7 @@ export class ReconnectingSocket {
     }
   };
   private readonly handleReady = () => {
+    this.drain();
     this.onReady.emit();
   };
   private readonly handleData = (data: Buffer) => this.onData.emit(data);
@@ -153,9 +163,27 @@ export class ReconnectingSocket {
     return Math.max(timeoutCapped + jitter, minTimeout);
   }
 
-  public write(data: string | Uint8Array, cb?: (err?: Error) => void): boolean {
-    const socket = this.getSocket();
-    return socket.write(data, cb);
+  public write(data: Uint8Array): boolean {
+    const socket = this.socket;
+    if (socket) return socket.write(data);
+    else {
+      const size = this.bufferSize + data.length;
+      if (size > this.opts.maxBufferSize) throw new Error('BUFFER_OVERFLOW');
+      this.bufferSize = size;
+      this.buffer.push(data);
+      return false;
+    }
+  }
+
+  protected drain(): void {
+    const buffer = this.buffer;
+    const length = buffer.length;
+    const socket = this.socket;
+    if (length && socket) {
+      for (let i = 0; i < length; i++) socket.write(buffer[i]);
+      this.buffer = [];
+      this.bufferSize = 0;
+    }
   }
 
   public ref() {
