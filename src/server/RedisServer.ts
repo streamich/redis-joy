@@ -5,6 +5,8 @@ import {RespStreamingDecoder} from 'json-joy/es2020/json-pack/resp/RespStreaming
 import {AvlMap} from 'json-joy/es2020/util/trees/avl/AvlMap';
 import {cmpUint8Array} from '../util/buf';
 
+/* tslint:disable no-console */
+
 export class RedisTcpServer {
   private server?: net.Server;
   protected readonly encoder: RespEncoder;
