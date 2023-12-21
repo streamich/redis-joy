@@ -6,7 +6,7 @@ export const cmd = new Command(
     return {
       server: 'redis',
       version: '6.0.9',
-      proto: 2,
+      proto: 3,
       id: 1,
       mode: 'standalone',
       role: 'master',
