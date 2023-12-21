@@ -5,7 +5,7 @@ import {RedisTcpServer} from "./server/RedisTcpServer";
 /* tslint:disable no-console */
 
 const main = async () => {
-  const server = new RedisTcpServer();
+  const server = new RedisTcpServer({port: 9999});
   server.start();
 };
 

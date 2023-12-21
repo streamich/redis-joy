@@ -6,7 +6,8 @@ export interface ICommand {
   exec: (cmd: ParsedCmd, core: RedisCore) => unknown;
 }
 
-export interface RedisServerConnection {
-  write: (data: string) => void;
-  writeBuf: (buf: Uint8Array) => void;
-}
+// export interface RedisServerConnection {
+//   onCommand: (cmd: ParsedCmd) => void;
+//   write: (data: string) => void;
+//   writeBuf: (buf: Uint8Array) => void;
+// }
