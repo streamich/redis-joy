@@ -1,8 +1,8 @@
 // npx ts-node src/demo-server.ts
 
-/* tslint:disable no-console */
+import {RedisTcpServer} from "./server/RedisTcpServer";
 
-import {RedisTcpServer} from './server/RedisServer';
+/* tslint:disable no-console */
 
 const main = async () => {
   const server = new RedisTcpServer();
