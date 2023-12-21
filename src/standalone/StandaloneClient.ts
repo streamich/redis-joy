@@ -9,7 +9,7 @@ import {AvlMap} from 'json-joy/es2020/util/trees/avl/AvlMap';
 import {bufferToUint8Array} from 'json-joy/es2020/util/buffers/bufferToUint8Array';
 import {cmpUint8Array, ascii} from '../util/buf';
 import {ReconnectingSocket} from '../util/ReconnectingSocket';
-import type {Cmd, MultiCmd, RedisClientCodecOpts} from '../types';
+import type {Cmd, MultiCmd, PublicKeys, RedisClientCodecOpts} from '../types';
 import type {RedisHelloResponse} from './types';
 
 const EMPTY_CMD = <Cmd>[];
@@ -25,13 +25,13 @@ const SPUBLISH = ascii`SPUBLISH`;
 const SUNSUBSCRIBE = ascii`SUNSUBSCRIBE`;
 
 export interface RedisClientOpts extends RedisClientCodecOpts {
-  socket: ReconnectingSocket;
+  socket: PublicKeys<ReconnectingSocket>;
   user?: string;
   pwd?: string;
 }
 
 export class StandaloneClient {
-  protected readonly socket: ReconnectingSocket;
+  protected readonly socket: PublicKeys<ReconnectingSocket>;
   public readonly subs = new AvlMap<Uint8Array, FanOut<Uint8Array>>(cmpUint8Array);
   public readonly psubs = new AvlMap<Uint8Array, FanOut<[channel: Uint8Array, message: Uint8Array]>>(cmpUint8Array);
   public readonly ssubs = new AvlMap<Uint8Array, FanOut<Uint8Array>>(cmpUint8Array);

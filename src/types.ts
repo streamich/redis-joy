@@ -12,3 +12,5 @@ export type MultiCmd = Cmd[];
 export type Cmd = Arg[];
 export type Arg = string | number | Uint8Array;
 export type ParsedCmd = [cmd: string, ...args: Uint8Array[]];
+
+export type PublicKeys<T> = Pick<T, keyof T>;

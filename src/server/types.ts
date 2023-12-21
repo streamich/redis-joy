@@ -1,9 +1,10 @@
 import type {ParsedCmd} from "../types";
-import {RedisCore} from "./RedisCore";
+import type {RedisCore} from "./RedisCore";
+import type {RedisServerConnection} from "./connection/types";
 
 export interface ICommand {
   name: string;
-  exec: (cmd: ParsedCmd, core: RedisCore) => unknown;
+  exec: (cmd: ParsedCmd, core: RedisCore, connection: RedisServerConnection) => unknown;
 }
 
 // export interface RedisServerConnection {

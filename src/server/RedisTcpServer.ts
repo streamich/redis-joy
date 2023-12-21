@@ -1,7 +1,5 @@
 import * as net from 'net';
 import {RespEncoder} from 'json-joy/es2020/json-pack/resp';
-import {AvlMap} from 'json-joy/es2020/util/trees/avl/AvlMap';
-import {cmpUint8Array} from '../util/buf';
 import {RedisServerTcpConnection} from './connection/RedisServerTcpConnection';
 import {RedisServer} from './RedisServer';
 
@@ -14,8 +12,6 @@ export interface RedisTcpServerOpts {
 export class RedisTcpServer extends RedisServer {
   private server?: net.Server;
   protected readonly encoder: RespEncoder;
-
-  public readonly kv = new AvlMap<Uint8Array, Uint8Array>(cmpUint8Array);
 
   constructor(protected readonly opts: RedisTcpServerOpts = {}) {
     super();

@@ -8,7 +8,7 @@ export class RedisServer {
   public onConnection(connection: RedisServerConnection) {
     connection.oncmd = (cmd: ParsedCmd) => {
       try {
-        const res = this.runtime.exec(cmd);
+        const res = this.runtime.exec(cmd, connection);
         connection.send(res);
       } catch (err) {
         if (err instanceof Error) connection.send(err);

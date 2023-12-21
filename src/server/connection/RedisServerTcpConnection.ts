@@ -27,14 +27,6 @@ export class RedisServerTcpConnection implements RedisServerConnection {
         else this.send(new Error('ERR unknown error'));
       }
     });
-    // socket.on('connect', this.handleConnect);
-    // socket.on('ready', this.handleReady);
-    // socket.on('drain', this.handleDrain);
-    // socket.on('error', this.handleError);
-    // socket.on('close', this.handleClose);
-    // socket.on('timeout', this.handleTimeout);
-    // socket.on('end', () => {});
-    // socket.on('lookup', (err: Error, address: string, family: string | number, host: string) => {});
   }
 
   public send(data: unknown) {
