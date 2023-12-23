@@ -19,6 +19,7 @@ export class RedisServerTcpConnection implements RedisServerConnection {
         while (true) {
           const cmd = decoder.readCmd();
           if (cmd === undefined) break;
+          // console.log('cmd', cmd, Buffer.from(cmd[1] || '').toString(), Buffer.from(cmd[2] || '').toString());
           if (!Array.isArray(cmd)) throw new Error('ERR unknown command');
           this.oncmd(cmd);
         }
@@ -26,6 +27,11 @@ export class RedisServerTcpConnection implements RedisServerConnection {
         if (err instanceof Error) this.send(err);
         else this.send(new Error('ERR unknown error'));
       }
+    });
+    // We need to handle error events, otherwise if error is emitted
+    // and there is no listener, the process will crash.
+    socket.on('error', (err) => {
+      console.error('connection error', err);
     });
   }
 
