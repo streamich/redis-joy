@@ -18,7 +18,7 @@ if (process.env.TEST_LOCAL_CLUSTER) {
     await cluster.cmd(['SET', key, 'bar']);
     cluster.stop();
   });
-  
+
   test('can set and get a key using master client', async () => {
     const {cluster} = setup();
     cluster.start();
@@ -29,7 +29,7 @@ if (process.env.TEST_LOCAL_CLUSTER) {
     expect(res).toBe('bar');
     cluster.stop();
   });
-  
+
   test('can set and get a key', async () => {
     const {cluster} = setup();
     cluster.start();
@@ -38,7 +38,7 @@ if (process.env.TEST_LOCAL_CLUSTER) {
     const res = await cluster.cmd(['GET', key], {utf8Res: true});
     expect(res).toBe('bar');
     cluster.stop();
-  });  
+  });
 } else {
   test.todo('To enable cluster tests, set TEST_LOCAL_CLUSTER=1 in your environment variables.');
 }
