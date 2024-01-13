@@ -12,7 +12,6 @@ import {ReconnectingSocket} from '../util/ReconnectingSocket';
 import type {Cmd, MultiCmd, PublicKeys, RedisClientCodecOpts} from '../types';
 import type {RedisHelloResponse} from './types';
 
-const EMPTY_CMD = <Cmd>[];
 const HELLO = ascii`HELLO`;
 const AUTH = ascii`AUTH`;
 const SUBSCRIBE = ascii`SUBSCRIBE`;
@@ -106,7 +105,6 @@ export class StandaloneClient {
       for (let i = 0; i < length; i++) {
         const call = requests[i];
         const cmd = call.args;
-        call.args = EMPTY_CMD;
         if (isMultiCmd(cmd)) {
           const length = cmd.length;
           if (call.utf8) for (let i = 0; i < length; i++) encoder.writeCmdUtf8(cmd[i]);

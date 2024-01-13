@@ -113,10 +113,14 @@ export class RedisCluster implements Printable {
     });
   }
 
+  private _routerReady = false;
+
   public async whenRouterReady(): Promise<void> {
+    if (this._routerReady) return;
     if (!this.router.isEmpty()) return;
     return new Promise((resolve) => {
       const unsubscribe = this.onRouter.listen(() => {
+        this._routerReady = true;
         unsubscribe();
         resolve();
       });
@@ -154,9 +158,9 @@ export class RedisCluster implements Printable {
   }
 
   private async rebuildRoutingTable(): Promise<void> {
-    // const client = await this.getAnyClientOrSeed();
-    // if (this.stopped) return;
-    // await this.router.rebuild(client);
+    const client = await this.getAnyClientOrSeedClient();
+    if (this.stopped) return;
+    await this.router.rebuild(client);
   }
 
   // ------------------------------------------------------ Client construction
@@ -185,7 +189,6 @@ export class RedisCluster implements Printable {
     }
   }
 
-  /** When cluster client boots it creates nodes from seed configs. */
   protected async startClientFromConfig(config: RedisClusterNodeClientOpts): Promise<RedisClusterNodeClient> {
     const conf = {
       ...this.opts.connectionConfig,
@@ -222,7 +225,10 @@ export class RedisCluster implements Printable {
     oldClient: RedisClusterNodeClient,
   ): Promise<RedisClusterNodeClient> {
     const node = this.router.getNodeByEndpoint(host, port);
-    if (node) return await this.ensureNodeHasClient(node);
+    if (node) {
+      const client = await this.ensureNodeHasClient(node);
+      return client;
+    }
     await this.router.rebuild(oldClient);
     const node2 = this.router.getNodeByEndpoint(host, port);
     if (!node2) throw new Error('NO_NODE');
@@ -254,6 +260,24 @@ export class RedisCluster implements Printable {
     return await this.getAnyClientOrSeedClient();
   }
 
+  public async getMasterClientForKey(key: string): Promise<RedisClusterNodeClient> {
+    if (!this._routerReady) await this.whenRouterReady();
+    const router = this.router;
+    const slot = getSlotAny(key);
+    const node = router.getMasterNodeForSlot(slot);
+    if (node) return await this.ensureNodeHasClient(node);
+    throw new Error('NO_NODE');
+  }
+
+  public async getRandomReplicaClientForKey(key: string): Promise<RedisClusterNodeClient> {
+    if (!this._routerReady) await this.whenRouterReady();
+    const router = this.router;
+    const slot = getSlotAny(key);
+    const node = router.getRandomReplicaNodeForSlot(slot);
+    if (node) return await this.ensureNodeHasClient(node);
+    throw new Error('NO_NODE');
+  }
+
   // -------------------------------------------------------- Command execution
 
   protected async __call(call: RedisClusterCall): Promise<unknown> {
@@ -283,6 +307,7 @@ export class RedisCluster implements Printable {
   }
 
   public async call(call: RedisClusterCall): Promise<unknown> {
+    if (!this._routerReady) await this.whenRouterReady();
     const args = call.args;
     let cmd: string = args[0] as string;
     const isMulti = isMultiCmd(args);
