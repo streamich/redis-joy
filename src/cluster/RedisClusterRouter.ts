@@ -2,6 +2,7 @@ import {AvlMap} from 'json-joy/es2020/util/trees/avl/AvlMap';
 import {RedisClusterSlotRange} from './RedisClusterSlotRange';
 import {RedisClusterNode} from './RedisClusterNode';
 import {NodeHealth, NodeRole} from './constants';
+import {xorShift32} from 'thingies/es2020/xorshift';
 import {printTree} from 'json-joy/es2020/util/print/printTree';
 import type {Printable} from 'json-joy/es2020/util/print/types';
 import type {RedisCluster} from './RedisCluster';
@@ -106,20 +107,24 @@ export class RedisClusterRouter implements Printable {
 
   public getRandomReplicaNodeForSlot(slot: number): RedisClusterNode | undefined {
     const replicas = this.getReplicaNodesForSlot(slot);
-    if (!replicas.length) return undefined;
-    return replicas[Math.floor(Math.random() * replicas.length)];
+    const length = replicas.length;
+    if (!length) return undefined;
+    const index = xorShift32() % length;
+    return replicas[index];
   }
 
   public getRandomNodeForSlot(slot: number): RedisClusterNode | undefined {
     const nodes = this.getNodesForSlot(slot);
-    if (!nodes.length) return undefined;
-    return nodes[Math.floor(Math.random() * nodes.length)];
+    const length = nodes.length;
+    if (!length) return undefined;
+    const index = xorShift32() % length;
+    return nodes[index];
   }
 
   public getRandomNode(): RedisClusterNode | undefined {
     const size = this.byId.size;
     if (!size) return undefined;
-    const index = Math.floor(Math.random() * size);
+    const index = xorShift32() % size;
     let i = 0;
     for (const client of this.byId.values()) if (i++ === index) return client;
     return;

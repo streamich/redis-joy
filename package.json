@@ -44,7 +44,7 @@
   },
   "dependencies": {
     "json-joy": "^11.25.0",
-    "thingies": "^1.15.0"
+    "thingies": "^1.16.0"
   },
   "devDependencies": {
     "@types/benchmark": "^2.1.5",
