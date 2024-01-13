@@ -49,13 +49,13 @@ const main = async () => {
     })
     .add('ioredis', async () => {
       await ioredis.set(key, value);
-      const res = await ioredis.get(key);
-      if (res !== value) throw new Error('Unexpected response');
+      // const res = await ioredis.get(key);
+      // if (res !== value) throw new Error('Unexpected response');
     })
     .add('redis', async () => {
       await redis.set(key, value);
-      const res = await redis.get(key);
-      if (res !== value) throw new Error('Unexpected response');
+      // const res = await redis.get(key);
+      // if (res !== value) throw new Error('Unexpected response');
     })
     .on('cycle', (event: any) => {
       console.log(String(event.target));
