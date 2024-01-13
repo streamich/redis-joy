@@ -1,7 +1,7 @@
-import type {ParsedCmd} from "../types";
-import type {RedisCore} from "./RedisCore";
-import type {RedisServerConnection} from "./connection/types";
-import type {ICommand} from "./types";
+import type {ParsedCmd} from '../types';
+import type {RedisCore} from './RedisCore';
+import type {RedisServerConnection} from './connection/types';
+import type {ICommand} from './types';
 
 export class Command implements ICommand {
   constructor(

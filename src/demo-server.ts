@@ -1,6 +1,6 @@
 // npx ts-node src/demo-server.ts
 
-import {RedisTcpServer} from "./server/RedisTcpServer";
+import {RedisTcpServer} from './server/RedisTcpServer';
 
 /* tslint:disable no-console */
 

@@ -1,6 +1,6 @@
-import type {ParsedCmd} from "../types";
-import type {RedisCore} from "./RedisCore";
-import type {RedisServerConnection} from "./connection/types";
+import type {ParsedCmd} from '../types';
+import type {RedisCore} from './RedisCore';
+import type {RedisServerConnection} from './connection/types';
 
 export interface ICommand {
   name: string;

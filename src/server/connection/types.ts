@@ -1,4 +1,4 @@
-import type {ParsedCmd} from "../../types";
+import type {ParsedCmd} from '../../types';
 
 export interface RedisServerConnection {
   oncmd: (cmd: ParsedCmd) => void;

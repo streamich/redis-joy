@@ -1,8 +1,5 @@
-import {Command} from "../../Command";
+import {Command} from '../../Command';
 
-export const cmd = new Command(
-  'INFO',
-  (cmd, core) => {
-    return '';
-  },
-);
+export const cmd = new Command('INFO', (cmd, core) => {
+  return '';
+});

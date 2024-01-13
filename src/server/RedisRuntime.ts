@@ -10,7 +10,7 @@ export class RedisRuntime {
   public readonly core: RedisCore = new RedisCore();
   protected readonly matcher: RouteMatcher;
 
-  constructor () {
+  constructor() {
     const router = new Router();
     for (const cmd of commands) router.add(cmd.name, cmd);
     this.matcher = router.compile();

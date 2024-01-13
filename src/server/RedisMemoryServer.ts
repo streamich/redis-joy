@@ -17,26 +17,25 @@ export class RedisMemoryServer extends RedisServer {
     this.encoder = new RespEncoder();
   }
 
-  public start() {
-  }
+  public start() {}
 
   public connectClient(): StandaloneClient {
     const onReady = new FanOut<void>();
     const onData = new FanOut<Buffer>();
     const encoder = this.encoder;
-    const connection = new class implements RedisServerConnection {
+    const connection = new (class implements RedisServerConnection {
       public oncmd: (cmd: ParsedCmd) => void = () => {};
       public send(data: unknown): void {
         const buf = encoder.encode(data);
         onData.emit(Buffer.from(buf));
       }
       public close(): void {}
-    };
+    })();
     const decoder = new RespStreamingDecoder();
     const client = new StandaloneClient({
       encoder: new RespEncoder(),
       decoder: new RespStreamingDecoder(),
-      socket: new class implements PublicKeys<ReconnectingSocket> {
+      socket: new (class implements PublicKeys<ReconnectingSocket> {
         public socket? = undefined;
         public readonly onReady = onReady;
         public readonly onData = onData;
@@ -65,12 +64,12 @@ export class RedisMemoryServer extends RedisServer {
           });
           return true;
         }
-      }
+      })(),
     });
     this.onConnection(connection);
     setImmediate(() => {
       onReady.emit();
     });
     return client;
-  };
+  }
 }

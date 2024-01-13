@@ -8,7 +8,7 @@ const setup = () => {
 };
 
 let keyCnt = 1;
-const getKey = () => 'redis-cluster-smoketest-foo' + (keyCnt++);
+const getKey = () => 'redis-cluster-smoketest-foo' + keyCnt++;
 
 test('can set a key', async () => {
   const {cluster} = setup();

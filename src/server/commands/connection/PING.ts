@@ -1,8 +1,5 @@
-import {Command} from "../../Command";
+import {Command} from '../../Command';
 
-export const cmd = new Command(
-  'PING',
-  (cmd, core) => {
-    return 'PONG';
-  },
-);
+export const cmd = new Command('PING', (cmd, core) => {
+  return 'PONG';
+});

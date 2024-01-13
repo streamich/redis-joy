@@ -8,7 +8,10 @@ export class KeyNode<V = unknown> implements IAvlTreeNode<Uint8Array, V> {
   public l: AvlNode<Uint8Array, V> | undefined = undefined;
   public r: AvlNode<Uint8Array, V> | undefined = undefined;
   public bf: number = 0;
-  constructor(public readonly k: Uint8Array, public v: V) {}
+  constructor(
+    public readonly k: Uint8Array,
+    public v: V,
+  ) {}
 }
 
 export class StringKeyNode extends KeyNode<Uint8Array> {}

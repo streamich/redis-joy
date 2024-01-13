@@ -1,6 +1,6 @@
-import {ParsedCmd} from "../types";
-import {RedisRuntime} from "./RedisRuntime";
-import {RedisServerConnection} from "./connection/types";
+import {ParsedCmd} from '../types';
+import {RedisRuntime} from './RedisRuntime';
+import {RedisServerConnection} from './connection/types';
 
 export class RedisServer {
   public readonly runtime = new RedisRuntime();
@@ -15,5 +15,5 @@ export class RedisServer {
         else connection.send(new Error('ERR unknown error'));
       }
     };
-  }  
+  }
 }
