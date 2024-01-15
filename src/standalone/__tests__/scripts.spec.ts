@@ -20,18 +20,20 @@ const setup = () => {
 
 test('can run a script', async () => {
   const {client} = setup();
-  client.scripts.set('hello-scripting', "return 'Hello, scripting!'");
-  const res = await client.eval('hello-scripting', 0, [], [], {utf8Res: true});
+  const scriptName = 'hello-scripting-' + Date.now();
+  client.scripts.set(scriptName, "return 'Hello, scripting!'");
+  const res = await client.eval(scriptName, 0, [], [], {utf8Res: true});
   expect(res).toBe('Hello, scripting!');
   client.stop();
 });
 
 test('can run a with keys and arguments', async () => {
   const {client} = setup();
-  client.scripts.set('add', `return tonumber(redis.call("get",KEYS[1])) + tonumber(ARGV[1])`);
+  const scriptName = 'add-script-' + Date.now();
+  client.scripts.set(scriptName, `return tonumber(redis.call("get",KEYS[1])) + tonumber(ARGV[1])`);
   const key = 'script-key-test';
   await client.cmd(['SET', key, '1']);
-  const res = await client.eval('add', 1, [key], ['2'], {utf8Res: true});
+  const res = await client.eval(scriptName, 1, [key], ['2'], {utf8Res: true});
   expect(res).toBe(3);
   client.stop();
 });

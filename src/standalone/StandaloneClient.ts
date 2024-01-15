@@ -52,7 +52,7 @@ export class StandaloneClient {
       this.scheduleRead();
     });
     socket.onReady.listen(() => {
-      this.hello(3, opts.pwd, opts.user)
+      this.hello(3, opts.pwd, opts.user, true)
         .then(() => {
           this.__whenReady.resolve();
           this.onReady.emit();
@@ -60,6 +60,9 @@ export class StandaloneClient {
         .catch((error) => {
           this.__whenReady.reject(error);
           this.onError.emit(error);
+        })
+        .finally(() => {
+          this._isReady = true;
         });
       const {subs, psubs, ssubs} = this;
       if (!subs.isEmpty()) {
@@ -87,6 +90,7 @@ export class StandaloneClient {
   // ------------------------------------------------------------------- Events
 
   private readonly __whenReady = new Defer<void>();
+  private _isReady = false;
   public readonly whenReady = this.__whenReady.promise;
   public readonly onReady = new FanOut<void>();
   public readonly onError = new FanOut<Error | unknown>();
@@ -206,8 +210,14 @@ export class StandaloneClient {
 
   public async call(call: StandaloneCall): Promise<unknown> {
     const noResponse = call.noRes;
-    this.requests.push(call);
-    this.responses.push(noResponse ? null : call);
+    if (call.asap) {
+      this.requests.unshift(call);
+      this.responses.unshift(noResponse ? null : call);
+    } else {
+      if (!this._isReady) await this.whenReady;
+      this.requests.push(call);
+      this.responses.push(noResponse ? null : call);
+    }
     this.scheduleWrite();
     return noResponse ? void 0 : call.response.promise;
   }
@@ -235,9 +245,11 @@ export class StandaloneClient {
   // -------------------------------------------------------- Built-in commands
 
   /** Authenticate and negotiate protocol version. */
-  public async hello(protocol: 2 | 3, pwd?: string, usr: string = ''): Promise<RedisHelloResponse> {
+  public async hello(protocol: 2 | 3, pwd?: string, usr: string = '', asap: boolean = false): Promise<RedisHelloResponse> {
     const args: Cmd = pwd ? [HELLO, protocol, AUTH, usr, pwd] : [HELLO, protocol];
-    return (await this.call(new StandaloneCall(args))) as RedisHelloResponse;
+    const call = new StandaloneCall(args);
+    if (asap) call.asap = true;
+    return (await this.call(call)) as RedisHelloResponse;
   }
 
   // ------------------------------------------------------------------ Scripts
