@@ -9,6 +9,8 @@ import {AvlMap} from 'json-joy/es2020/util/trees/avl/AvlMap';
 import {bufferToUint8Array} from 'json-joy/es2020/util/buffers/bufferToUint8Array';
 import {cmpUint8Array, ascii} from '../util/buf';
 import {ReconnectingSocket} from '../util/ReconnectingSocket';
+import {ScriptRegistry} from '../ScriptRegistry';
+import {isNoscriptError} from './errors';
 import type {Cmd, MultiCmd, PublicKeys, RedisClientCodecOpts} from '../types';
 import type {RedisHelloResponse} from './types';
 
@@ -22,23 +24,29 @@ const PUNSUBSCRIBE = ascii`PUNSUBSCRIBE`;
 const SSUBSCRIBE = ascii`SSUBSCRIBE`;
 const SPUBLISH = ascii`SPUBLISH`;
 const SUNSUBSCRIBE = ascii`SUNSUBSCRIBE`;
+const EVALSHA = ascii`EVALSHA`;
+const SCRIPT = ascii`SCRIPT`;
+const LOAD = ascii`LOAD`;
 
-export interface RedisClientOpts extends RedisClientCodecOpts {
+export interface RedisClientOpts extends Partial<RedisClientCodecOpts> {
   socket: PublicKeys<ReconnectingSocket>;
   user?: string;
   pwd?: string;
+  scripts?: ScriptRegistry;
 }
 
 export class StandaloneClient {
   protected readonly socket: PublicKeys<ReconnectingSocket>;
+  protected scripts: ScriptRegistry;
   public readonly subs = new AvlMap<Uint8Array, FanOut<Uint8Array>>(cmpUint8Array);
   public readonly psubs = new AvlMap<Uint8Array, FanOut<[channel: Uint8Array, message: Uint8Array]>>(cmpUint8Array);
   public readonly ssubs = new AvlMap<Uint8Array, FanOut<Uint8Array>>(cmpUint8Array);
 
   constructor(opts: RedisClientOpts) {
+    this.scripts = opts.scripts ?? new ScriptRegistry();
     const socket = (this.socket = opts.socket);
-    this.encoder = opts.encoder;
-    const decoder = (this.decoder = opts.decoder);
+    this.encoder = opts.encoder ?? new RespEncoder();
+    const decoder = (this.decoder = (opts.decoder ?? new RespStreamingDecoder()));
     socket.onData.listen((data) => {
       decoder.push(data);
       this.scheduleRead();
@@ -230,6 +238,24 @@ export class StandaloneClient {
   public async hello(protocol: 2 | 3, pwd?: string, usr: string = ''): Promise<RedisHelloResponse> {
     const args: Cmd = pwd ? [HELLO, protocol, AUTH, usr, pwd] : [HELLO, protocol];
     return (await this.call(new StandaloneCall(args))) as RedisHelloResponse;
+  }
+
+  // ------------------------------------------------------------------ Scripts
+
+  public async eval(id: string, numkeys: number, keys: (string | Uint8Array)[], args: (string | Uint8Array)[], opts?: CmdOpts): Promise<unknown> {
+    const script = this.scripts.get(id);
+    if (!script) throw new Error('SCRIPT_NOT_REGISTERED');
+    const cmd = [EVALSHA, script.sha1, numkeys, ...keys, ...args];
+    try {
+      return await this.cmd(cmd, opts);
+    } catch (error) {
+      if (!isNoscriptError(error)) throw error;
+      const [, result] = await Promise.all([
+        this.cmd([SCRIPT, LOAD, script.script], {noRes: true}),
+        this.cmd(cmd, opts),
+      ]);
+      return result;
+    }
   }
 
   // --------------------------------------------------------- Pub/sub commands

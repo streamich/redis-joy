@@ -1,4 +1,3 @@
-import {RespPush} from 'json-joy/es2020/json-pack/resp/extensions';
 import type {Cmd, MultiCmd} from '../types';
 
 export const isMultiCmd = (cmd: Cmd | MultiCmd): cmd is MultiCmd => cmd[0] instanceof Array;
