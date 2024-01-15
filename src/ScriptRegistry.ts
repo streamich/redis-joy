@@ -1,10 +1,11 @@
 import {createHash} from 'crypto';
 
 export class Script {
-  public readonly sha1: string;
+  public readonly sha1: Uint8Array;
 
   constructor(public readonly script: string) {
-    this.sha1 = createHash('sha1').update(script).digest('hex');
+    const hash = createHash('sha1').update(script).digest('hex');
+    this.sha1 = Buffer.from(hash);
   }
 }
 
