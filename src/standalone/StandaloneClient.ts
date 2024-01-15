@@ -37,7 +37,7 @@ export interface RedisClientOpts extends Partial<RedisClientCodecOpts> {
 
 export class StandaloneClient {
   protected readonly socket: PublicKeys<ReconnectingSocket>;
-  protected scripts: ScriptRegistry;
+  public readonly scripts: ScriptRegistry;
   public readonly subs = new AvlMap<Uint8Array, FanOut<Uint8Array>>(cmpUint8Array);
   public readonly psubs = new AvlMap<Uint8Array, FanOut<[channel: Uint8Array, message: Uint8Array]>>(cmpUint8Array);
   public readonly ssubs = new AvlMap<Uint8Array, FanOut<Uint8Array>>(cmpUint8Array);

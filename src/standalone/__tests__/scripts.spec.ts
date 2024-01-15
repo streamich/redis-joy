@@ -19,8 +19,8 @@ const setup = () => {
 };
 
 test('can run a script', async () => {
-  const {client, scripts} = setup();
-  scripts.set('hello-scripting', "return 'Hello, scripting!'");
+  const {client} = setup();
+  client.scripts.set('hello-scripting', "return 'Hello, scripting!'");
   const res = await client.eval('hello-scripting', 0, [], [], {utf8Res: true});
   expect(res).toBe('Hello, scripting!');
   client.stop();
