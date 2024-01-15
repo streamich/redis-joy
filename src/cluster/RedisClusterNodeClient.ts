@@ -6,6 +6,7 @@ import {ReconnectingSocket} from '../util/ReconnectingSocket';
 import type {Printable} from 'json-joy/es2020/util/print/types';
 import type {RedisClientCodecOpts} from '../types';
 import type {RedisClusterShardsResponse} from './types';
+import type {ScriptRegistry} from '../ScriptRegistry';
 
 export interface RedisClusterNodeClientOpts {
   /** Hostname or IP address of the Redis node. Defaults to 'localhost'. */
@@ -26,6 +27,9 @@ export interface RedisClusterNodeClientOpts {
    * Defaults to 1MB.
    */
   maxBufferSize?: number;
+
+  /** Script registry. */
+  scripts?: ScriptRegistry;
 }
 
 export class RedisClusterNodeClient extends StandaloneClient implements Printable {
@@ -34,7 +38,7 @@ export class RedisClusterNodeClient extends StandaloneClient implements Printabl
   /** Port of the Redis node. */
   public readonly port: number;
 
-  constructor({host = 'localhost', port = 6379, ...opts}: RedisClusterNodeClientOpts, codec: RedisClientCodecOpts) {
+  constructor({host = 'localhost', port = 6379, scripts, ...opts}: RedisClusterNodeClientOpts, codec: RedisClientCodecOpts) {
     super({
       socket: new ReconnectingSocket({
         createSocket: opts.tls
@@ -51,6 +55,7 @@ export class RedisClusterNodeClient extends StandaloneClient implements Printabl
       pwd: opts.pwd,
       encoder: codec.encoder,
       decoder: codec.decoder,
+      scripts,
     });
     this.host = host;
     this.port = port;
