@@ -25,3 +25,13 @@ test('can run a script', async () => {
   expect(res).toBe('Hello, scripting!');
   client.stop();
 });
+
+test('can run a with keys and arguments', async () => {
+  const {client} = setup();
+  client.scripts.set('add', `return tonumber(redis.call("get",KEYS[1])) + tonumber(ARGV[1])`);
+  const key = 'script-key-test';
+  await client.cmd(['SET', key, '1']);
+  const res = await client.eval('add', 1, [key], ['2'], {utf8Res: true});
+  expect(res).toBe(3);
+  client.stop();
+});
