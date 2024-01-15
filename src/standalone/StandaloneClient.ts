@@ -46,7 +46,7 @@ export class StandaloneClient {
     this.scripts = opts.scripts ?? new ScriptRegistry();
     const socket = (this.socket = opts.socket);
     this.encoder = opts.encoder ?? new RespEncoder();
-    const decoder = (this.decoder = (opts.decoder ?? new RespStreamingDecoder()));
+    const decoder = (this.decoder = opts.decoder ?? new RespStreamingDecoder());
     socket.onData.listen((data) => {
       decoder.push(data);
       this.scheduleRead();
@@ -242,7 +242,13 @@ export class StandaloneClient {
 
   // ------------------------------------------------------------------ Scripts
 
-  public async eval(id: string, numkeys: number, keys: (string | Uint8Array)[], args: (string | Uint8Array)[], opts?: CmdOpts): Promise<unknown> {
+  public async eval(
+    id: string,
+    numkeys: number,
+    keys: (string | Uint8Array)[],
+    args: (string | Uint8Array)[],
+    opts?: CmdOpts,
+  ): Promise<unknown> {
     const script = this.scripts.get(id);
     if (!script) throw new Error('SCRIPT_NOT_REGISTERED');
     const cmd = [EVALSHA, script.sha1, numkeys, ...keys, ...args];
