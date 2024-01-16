@@ -18,7 +18,7 @@ const setup = () => {
       createSocket: () => net.connect({host, port}),
     }),
   });
-  const kv = new KvBlobStore(utf8 `kv:`, client);
+  const kv = new KvBlobStore(utf8`kv:`, client);
   client.start();
   return {client, scripts, kv};
 };

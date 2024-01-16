@@ -8,9 +8,9 @@ const getKey = () => utf8`key-${cnt}:${Math.random()}${Date.now()}`;
 export const runKvBlobStoreTests = (kv: KvBlobStore) => {
   test('can set and get a key', async () => {
     const key = getKey();
-    await kv.create(key, utf8 `hello`);
+    await kv.create(key, utf8`hello`);
     const value = await kv.get(key);
-    expect(value).toEqual(utf8 `hello`);
+    expect(value).toEqual(utf8`hello`);
   });
 
   describe('create', () => {
@@ -158,7 +158,7 @@ export const runKvBlobStoreTests = (kv: KvBlobStore) => {
       const res = await kv.length(key);
       expect(res).toBe(13);
       const value = await kv.get(key);
-      expect(value).toEqual(utf8`🤷‍♂️`)
+      expect(value).toEqual(utf8`🤷‍♂️`);
     });
 
     test('returns size of value in bytes after update', async () => {
