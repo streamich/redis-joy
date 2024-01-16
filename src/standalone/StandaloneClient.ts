@@ -209,8 +209,9 @@ export class StandaloneClient {
   public async call(call: StandaloneCall): Promise<unknown> {
     const noResponse = call.noRes;
     if (call.asap) {
+      const responseIndex = this.responses.length - this.requests.length;
       this.requests.unshift(call);
-      this.responses.unshift(noResponse ? null : call);
+      this.responses.splice(responseIndex, 0, noResponse ? null : call);
     } else {
       if (!this._isReady) await this.whenReady;
       this.requests.push(call);
