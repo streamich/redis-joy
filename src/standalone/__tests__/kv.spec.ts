@@ -6,6 +6,7 @@ import {ScriptRegistry} from '../../ScriptRegistry';
 import {KvBlobStore} from '../../__tests__/kv/KvBlobStore';
 import {utf8} from '../../util/buf';
 import {runKvBlobStoreTests} from '../../__tests__/kv/runKvBlobStoreTests';
+import {tick} from 'thingies';
 
 const setup = () => {
   const host = config.standalone.host;
@@ -22,4 +23,11 @@ const setup = () => {
   return {client, scripts, kv};
 };
 
-runKvBlobStoreTests(setup().kv);
+const {kv, client} = setup();
+
+runKvBlobStoreTests(kv);
+
+afterAll(async () => {
+  await client.stop();
+  await tick(50);
+});
