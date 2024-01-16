@@ -157,12 +157,10 @@ export class StandaloneClient {
         const call = responses[i];
         if (call) decoder.tryUtf8 = !!call.utf8Res;
         const msg = decoder.read();
-        // console.log(msg);
         if (msg === undefined) break;
         if (msg instanceof RespPush) {
           this.onPush.emit(msg);
           const val = msg.val;
-          // console.log('push', Buffer.from(val[0] as any).toString());
           if (isPushMessage(val)) {
             const fanout = this.subs.get(val[1] as Uint8Array);
             if (fanout) fanout.emit(val[2] as Uint8Array);

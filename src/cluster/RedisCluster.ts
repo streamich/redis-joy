@@ -369,6 +369,7 @@ export class RedisCluster implements Printable {
     args: (string | Uint8Array)[],
     opts?: CmdOpts,
   ): Promise<unknown> {
+    if (!this._routerReady) await this.whenRouterReady();
     const script = this.scripts.get(id);
     if (!script) throw new Error('SCRIPT_NOT_REGISTERED');
     const isWrite = true;
