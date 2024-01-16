@@ -3,7 +3,7 @@ import {blob, utf8} from '../../util/buf';
 import {of} from 'thingies';
 
 let cnt = 0;
-const getKey = () => utf8`key-${cnt}:${Math.random()}${Date.now()}`;
+const getKey = () => utf8`key-${cnt++}:${Math.random()}${Date.now()}`;
 
 export const runKvBlobStoreTests = (kv: KvBlobStore) => {
   test('can set and get a key', async () => {

@@ -19,7 +19,7 @@ if (process.env.TEST_LOCAL_CLUSTER) {
   const {kv, client} = setup();
 
   runKvBlobStoreTests(kv);
-  
+
   afterAll(async () => {
     await client.stop();
     await tick(50);

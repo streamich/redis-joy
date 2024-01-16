@@ -19,10 +19,10 @@ if (process.env.TEST_LOCAL_CLUSTER) {
     const res = await client.cmd(['PING']);
     expect(res).toBe('PONG');
   });
-  
+
   afterAll(async () => {
     await client.stop();
-    await tick(50)
+    await tick(50);
   });
 } else {
   test.todo('To enable cluster tests, set TEST_LOCAL_CLUSTER=1 in your environment variables.');
