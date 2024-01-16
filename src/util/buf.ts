@@ -14,17 +14,25 @@ export const cmpUint8Array = (a: Uint8Array, b: Uint8Array): 1 | 0 | -1 => {
   return 0;
 };
 
-export const ascii = (txt: TemplateStringsArray | string | [string]): Uint8Array => {
-  if (typeof txt === 'string') return ascii([txt]);
-  [txt] = txt;
-  const len = txt.length;
+export const ascii = (txt: TemplateStringsArray | string | [string], ...args: any[]): Uint8Array => {
+  if (typeof txt === 'string') return utf8([txt]);
+  let str = '';
+  for (let i = 0; i < txt.length; i++) {
+    str += txt[i];
+    if (i < args.length) str += args[i];
+  }
+  const len = str.length;
   const res = new Uint8Array(len);
-  for (let i = 0; i < len; i++) res[i] = txt.charCodeAt(i);
+  for (let i = 0; i < len; i++) res[i] = str.charCodeAt(i);
   return res;
 };
 
-export const utf8 = (txt: TemplateStringsArray | [string] | string): Uint8Array => {
+export const utf8 = (txt: TemplateStringsArray | [string] | string, ...args: any[]): Uint8Array => {
   if (typeof txt === 'string') return utf8([txt]);
-  [txt] = txt;
-  return bufferToUint8Array(Buffer.from(txt, 'utf8'));
+  let str = '';
+  for (let i = 0; i < txt.length; i++) {
+    str += txt[i];
+    if (i < args.length) str += args[i];
+  }
+  return bufferToUint8Array(Buffer.from(str, 'utf8'));
 };
