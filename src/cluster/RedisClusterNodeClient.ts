@@ -38,7 +38,10 @@ export class RedisClusterNodeClient extends StandaloneClient implements Printabl
   /** Port of the Redis node. */
   public readonly port: number;
 
-  constructor({host = 'localhost', port = 6379, scripts, ...opts}: RedisClusterNodeClientOpts, codec: RedisClientCodecOpts) {
+  constructor(
+    {host = 'localhost', port = 6379, scripts, ...opts}: RedisClusterNodeClientOpts,
+    codec: RedisClientCodecOpts,
+  ) {
     super({
       socket: new ReconnectingSocket({
         createSocket: opts.tls

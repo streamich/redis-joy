@@ -373,8 +373,11 @@ export class RedisCluster implements Printable {
     const script = this.scripts.get(id);
     if (!script) throw new Error('SCRIPT_NOT_REGISTERED');
     const isWrite = true;
-    const sampleKey: string | undefined = keys.length ? (typeof keys[0] === 'string' ? keys[0] : Buffer.from(keys[0]).toString()) + '' : undefined;
-    const client = sampleKey !== undefined ? await this.getClientForKey(sampleKey, isWrite) : await this.getAnyClientOrSeedClient();
+    const sampleKey: string | undefined = keys.length
+      ? (typeof keys[0] === 'string' ? keys[0] : Buffer.from(keys[0]).toString()) + ''
+      : undefined;
+    const client =
+      sampleKey !== undefined ? await this.getClientForKey(sampleKey, isWrite) : await this.getAnyClientOrSeedClient();
     const cmd = [EVALSHA, script.sha1, numkeys, ...keys, ...args];
     const call = this.createCall(cmd, opts);
     call.client = client;

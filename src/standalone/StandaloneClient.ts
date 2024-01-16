@@ -243,7 +243,12 @@ export class StandaloneClient {
   // -------------------------------------------------------- Built-in commands
 
   /** Authenticate and negotiate protocol version. */
-  public async hello(protocol: 2 | 3, pwd?: string, usr: string = '', asap: boolean = false): Promise<RedisHelloResponse> {
+  public async hello(
+    protocol: 2 | 3,
+    pwd?: string,
+    usr: string = '',
+    asap: boolean = false,
+  ): Promise<RedisHelloResponse> {
     const args: Cmd = pwd ? [HELLO, protocol, AUTH, usr, pwd] : [HELLO, protocol];
     const call = new StandaloneCall(args);
     if (asap) call.asap = true;

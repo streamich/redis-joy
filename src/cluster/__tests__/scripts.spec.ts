@@ -32,7 +32,6 @@ if (process.env.TEST_LOCAL_CLUSTER) {
     expect(res).toBe(3);
     cluster.stop();
   });
-  
 } else {
   test.todo('To enable cluster tests, set TEST_LOCAL_CLUSTER=1 in your environment variables.');
 }
