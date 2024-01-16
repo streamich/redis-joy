@@ -36,3 +36,5 @@ export const utf8 = (txt: TemplateStringsArray | [string] | string, ...args: any
   }
   return bufferToUint8Array(Buffer.from(str, 'utf8'));
 };
+
+export const blob = (...octets: number[]): Uint8Array => new Uint8Array(octets);

@@ -29,7 +29,8 @@ export class KvBlobStore {
 
   public async remove(key: Uint8Array): Promise<boolean> {
     const redisKey = Buffer.concat([this.pfx, key]);
-    return !!(await this.redis.cmd(['DEL', redisKey]));
+    const result = await this.redis.cmd(['DEL', redisKey]);
+    return !!result;
   }
 
   public async exists(key: Uint8Array): Promise<boolean> {
