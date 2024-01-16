@@ -9,6 +9,8 @@ import {AvlMap} from 'json-joy/es2020/util/trees/avl/AvlMap';
 import {bufferToUint8Array} from 'json-joy/es2020/util/buffers/bufferToUint8Array';
 import {cmpUint8Array, ascii} from '../util/buf';
 import {ReconnectingSocket} from '../util/ReconnectingSocket';
+import {ScriptRegistry} from '../ScriptRegistry';
+import {isNoscriptError} from './errors';
 import type {Cmd, MultiCmd, PublicKeys, RedisClientCodecOpts} from '../types';
 import type {RedisHelloResponse} from './types';
 
@@ -22,29 +24,35 @@ const PUNSUBSCRIBE = ascii`PUNSUBSCRIBE`;
 const SSUBSCRIBE = ascii`SSUBSCRIBE`;
 const SPUBLISH = ascii`SPUBLISH`;
 const SUNSUBSCRIBE = ascii`SUNSUBSCRIBE`;
+const EVALSHA = ascii`EVALSHA`;
+const SCRIPT = ascii`SCRIPT`;
+const LOAD = ascii`LOAD`;
 
-export interface RedisClientOpts extends RedisClientCodecOpts {
+export interface RedisClientOpts extends Partial<RedisClientCodecOpts> {
   socket: PublicKeys<ReconnectingSocket>;
   user?: string;
   pwd?: string;
+  scripts?: ScriptRegistry;
 }
 
 export class StandaloneClient {
   protected readonly socket: PublicKeys<ReconnectingSocket>;
+  public readonly scripts: ScriptRegistry;
   public readonly subs = new AvlMap<Uint8Array, FanOut<Uint8Array>>(cmpUint8Array);
   public readonly psubs = new AvlMap<Uint8Array, FanOut<[channel: Uint8Array, message: Uint8Array]>>(cmpUint8Array);
   public readonly ssubs = new AvlMap<Uint8Array, FanOut<Uint8Array>>(cmpUint8Array);
 
   constructor(opts: RedisClientOpts) {
+    this.scripts = opts.scripts ?? new ScriptRegistry();
     const socket = (this.socket = opts.socket);
-    this.encoder = opts.encoder;
-    const decoder = (this.decoder = opts.decoder);
+    this.encoder = opts.encoder ?? new RespEncoder();
+    const decoder = (this.decoder = opts.decoder ?? new RespStreamingDecoder());
     socket.onData.listen((data) => {
       decoder.push(data);
       this.scheduleRead();
     });
     socket.onReady.listen(() => {
-      this.hello(3, opts.pwd, opts.user)
+      this.hello(3, opts.pwd, opts.user, true)
         .then(() => {
           this.__whenReady.resolve();
           this.onReady.emit();
@@ -52,6 +60,9 @@ export class StandaloneClient {
         .catch((error) => {
           this.__whenReady.reject(error);
           this.onError.emit(error);
+        })
+        .finally(() => {
+          this._isReady = true;
         });
       const {subs, psubs, ssubs} = this;
       if (!subs.isEmpty()) {
@@ -79,6 +90,7 @@ export class StandaloneClient {
   // ------------------------------------------------------------------- Events
 
   private readonly __whenReady = new Defer<void>();
+  private _isReady = false;
   public readonly whenReady = this.__whenReady.promise;
   public readonly onReady = new FanOut<void>();
   public readonly onError = new FanOut<Error | unknown>();
@@ -145,12 +157,10 @@ export class StandaloneClient {
         const call = responses[i];
         if (call) decoder.tryUtf8 = !!call.utf8Res;
         const msg = decoder.read();
-        // console.log(msg);
         if (msg === undefined) break;
         if (msg instanceof RespPush) {
           this.onPush.emit(msg);
           const val = msg.val;
-          // console.log('push', Buffer.from(val[0] as any).toString());
           if (isPushMessage(val)) {
             const fanout = this.subs.get(val[1] as Uint8Array);
             if (fanout) fanout.emit(val[2] as Uint8Array);
@@ -198,8 +208,15 @@ export class StandaloneClient {
 
   public async call(call: StandaloneCall): Promise<unknown> {
     const noResponse = call.noRes;
-    this.requests.push(call);
-    this.responses.push(noResponse ? null : call);
+    if (call.asap) {
+      const responseIndex = this.responses.length - this.requests.length;
+      this.requests.unshift(call);
+      this.responses.splice(responseIndex, 0, noResponse ? null : call);
+    } else {
+      if (!this._isReady) await this.whenReady;
+      this.requests.push(call);
+      this.responses.push(noResponse ? null : call);
+    }
     this.scheduleWrite();
     return noResponse ? void 0 : call.response.promise;
   }
@@ -227,9 +244,40 @@ export class StandaloneClient {
   // -------------------------------------------------------- Built-in commands
 
   /** Authenticate and negotiate protocol version. */
-  public async hello(protocol: 2 | 3, pwd?: string, usr: string = ''): Promise<RedisHelloResponse> {
+  public async hello(
+    protocol: 2 | 3,
+    pwd?: string,
+    usr: string = '',
+    asap: boolean = false,
+  ): Promise<RedisHelloResponse> {
     const args: Cmd = pwd ? [HELLO, protocol, AUTH, usr, pwd] : [HELLO, protocol];
-    return (await this.call(new StandaloneCall(args))) as RedisHelloResponse;
+    const call = new StandaloneCall(args);
+    if (asap) call.asap = true;
+    return (await this.call(call)) as RedisHelloResponse;
+  }
+
+  // ------------------------------------------------------------------ Scripts
+
+  public async eval(
+    id: string,
+    numkeys: number,
+    keys: (string | Uint8Array)[],
+    args: (string | Uint8Array)[],
+    opts?: CmdOpts,
+  ): Promise<unknown> {
+    const script = this.scripts.get(id);
+    if (!script) throw new Error('SCRIPT_NOT_REGISTERED');
+    const cmd = [EVALSHA, script.sha1, numkeys, ...keys, ...args];
+    try {
+      return await this.cmd(cmd, opts);
+    } catch (error) {
+      if (!isNoscriptError(error)) throw error;
+      const [, result] = await Promise.all([
+        this.cmd([SCRIPT, LOAD, script.script], {noRes: true}),
+        this.cmd(cmd, opts),
+      ]);
+      return result;
+    }
   }
 
   // --------------------------------------------------------- Pub/sub commands

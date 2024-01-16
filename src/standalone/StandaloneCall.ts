@@ -27,6 +27,12 @@ export class StandaloneCall {
    */
   public noRes: boolean = false;
 
+  /**
+   * Whether to execute the command as soon as possible. This will place
+   * the command at the front of the write queue.
+   */
+  public asap: boolean = false;
+
   public readonly response = new Defer<unknown>();
 
   constructor(public args: Cmd | MultiCmd) {}
