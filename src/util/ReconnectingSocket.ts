@@ -107,6 +107,11 @@ export class ReconnectingSocket {
   private readonly handleDrain = () => this.onDrain.emit();
   private readonly handleError = (err: Error) => this.onError.emit(err);
   private readonly handleClose = () => {
+    clearTimeout(this.connectionTimeoutTimer);
+    this.connectionTimeoutTimer = undefined;
+    clearTimeout(this.retryTimer);
+    this.retryTimer = undefined;
+    this.socket?.unref();
     this.socket = undefined;
     if (this.stopped) return;
     this.retry();
@@ -140,7 +145,13 @@ export class ReconnectingSocket {
 
   public stop(): void {
     this.stopped = true;
-    this.getSocket().destroySoon();
+    const socket = this.getSocket();
+    socket.unref();
+    socket.destroySoon();
+    clearTimeout(this.connectionTimeoutTimer);
+    this.connectionTimeoutTimer = undefined;
+    clearTimeout(this.retryTimer);
+    this.retryTimer = undefined;
   }
 
   public reconnect(): void {
@@ -148,6 +159,7 @@ export class ReconnectingSocket {
   }
 
   protected retry(): void {
+    if (this.stopped) return;
     if (this.retryTimer) return;
     const retryTimeout = this.getRetryTimeout();
     this.retryCount++;

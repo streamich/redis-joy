@@ -42,16 +42,19 @@ export class StandaloneClient {
   public readonly psubs = new AvlMap<Uint8Array, FanOut<[channel: Uint8Array, message: Uint8Array]>>(cmpUint8Array);
   public readonly ssubs = new AvlMap<Uint8Array, FanOut<Uint8Array>>(cmpUint8Array);
 
+  private _onDataUnsub?: () => void;
+  private _onReadyUnsub?: () => void;
+
   constructor(opts: RedisClientOpts) {
     this.scripts = opts.scripts ?? new ScriptRegistry();
     const socket = (this.socket = opts.socket);
     this.encoder = opts.encoder ?? new RespEncoder();
     const decoder = (this.decoder = opts.decoder ?? new RespStreamingDecoder());
-    socket.onData.listen((data) => {
+    this._onDataUnsub = socket.onData.listen((data) => {
       decoder.push(data);
       this.scheduleRead();
     });
-    socket.onReady.listen(() => {
+    this._onReadyUnsub = socket.onReady.listen(() => {
       this.hello(3, opts.pwd, opts.user, true)
         .then(() => {
           this.__whenReady.resolve();
@@ -201,6 +204,12 @@ export class StandaloneClient {
   }
 
   public stop() {
+    this._onDataUnsub?.();
+    this._onReadyUnsub?.();
+    clearImmediate(this.encodingTimer);
+    this.encodingTimer = undefined;
+    clearImmediate(this.decodingTimer);
+    this.decodingTimer = undefined;
     this.socket.stop();
   }
 
