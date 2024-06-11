@@ -87,12 +87,15 @@ export class RedisCluster implements Printable {
   }
 
   public stop(): void {
+    this.stopped = true;
+    this._routerReadyUnsub?.();
     clearTimeout(this.initialTableBuildTimer);
+    this.initialTableBuildTimer = undefined;
     this.initialTableBuildAttempt = 0;
     clearTimeout(this.rebuildTimer);
+    this.rebuildTimer = undefined;
     this.isRebuildingRouteTable = false;
     this.routeTableRebuildRetry = 0;
-    this.stopped = true;
     this.clients.forEach((client) => client.stop());
   }
 
@@ -129,14 +132,14 @@ export class RedisCluster implements Printable {
   }
 
   private _routerReady = false;
-
+  private _routerReadyUnsub?: () => void;
   public async whenRouterReady(): Promise<void> {
     if (this._routerReady) return;
     if (!this.router.isEmpty()) return;
     return new Promise((resolve) => {
-      const unsubscribe = this.onRouter.listen(() => {
+      this._routerReadyUnsub = this.onRouter.listen(() => {
         this._routerReady = true;
-        unsubscribe();
+        this._routerReadyUnsub?.();
         resolve();
       });
     });
