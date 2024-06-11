@@ -431,6 +431,7 @@ export class StandaloneClient {
     if (!fanout) {
       fanout = new FanOut<Uint8Array>();
       this.ssubs.set(channelBuf, fanout);
+      // TODO: create FanOut only after SSUBSCRIBE succeeds
       this.cmdFnF([SSUBSCRIBE, channelBuf]);
     }
     const unsubscribe = fanout.listen(listener);
