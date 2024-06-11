@@ -1,5 +1,5 @@
 import * as net from 'net';
-import {FanOut} from 'thingies/es2020/fanout';
+import {FanOut} from 'thingies/lib/fanout';
 import type {PartialExcept} from '../types';
 
 export interface ReconnectingSocketOpts {

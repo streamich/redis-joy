@@ -1,8 +1,8 @@
-import {RespEncoder} from 'json-joy/es2020/json-pack/resp';
+import {FanOut} from 'thingies/lib/fanout';
+import {RespEncoder} from '@jsonjoy.com/json-pack/lib/resp';
+import {RespStreamingDecoder} from '@jsonjoy.com/json-pack/lib/resp/RespStreamingDecoder';
 import {RedisServer} from './RedisServer';
 import {StandaloneClient} from '../standalone';
-import {FanOut} from 'thingies/es2020/fanout';
-import {RespStreamingDecoder} from 'json-joy/es2020/json-pack/resp/RespStreamingDecoder';
 import {ParsedCmd, PublicKeys} from '../types';
 import {RedisServerConnection} from './connection/types';
 import type {ReconnectingSocket} from '../util/ReconnectingSocket';

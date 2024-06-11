@@ -1,7 +1,6 @@
+import {Router, RouteMatcher} from '@jsonjoy.com/jit-router';
 import {ParsedCmd} from '../types';
 import {commands} from './commands';
-import {Router} from 'json-joy/es2020/util/router';
-import {RouteMatcher} from 'json-joy/es2020/util/router/codegen';
 import {RedisCore} from './RedisCore';
 import type {Command} from './Command';
 import type {RedisServerConnection} from './connection/types';

@@ -1,6 +1,6 @@
-import {AvlNode} from 'json-joy/es2020/util/trees/avl/AvlMap';
-import {IAvlTreeNode} from 'json-joy/es2020/util/trees/avl/types';
-import {insert} from 'json-joy/es2020/util/trees/avl/util';
+import {AvlNode} from 'sonic-forest/lib/avl/AvlMap';
+import {IAvlTreeNode} from 'sonic-forest/lib/avl/types';
+import {insert} from 'sonic-forest/lib/avl/util';
 import {cmpUint8Array} from '../util/buf';
 
 export class KeyNode<V = unknown> implements IAvlTreeNode<Uint8Array, V> {

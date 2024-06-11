@@ -1,5 +1,5 @@
 import * as net from 'net';
-import {RespEncoder} from 'json-joy/es2020/json-pack/resp';
+import {RespEncoder} from '@jsonjoy.com/json-pack/lib/resp';
 import {RedisServerTcpConnection} from './connection/RedisServerTcpConnection';
 import {RedisServer} from './RedisServer';
 

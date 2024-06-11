@@ -1,7 +1,7 @@
 import * as net from 'net';
 import {RedisServerConnection} from './types';
-import {RespEncoder} from 'json-joy/es2020/json-pack/resp';
-import {RespStreamingDecoder} from 'json-joy/es2020/json-pack/resp/RespStreamingDecoder';
+import {RespEncoder} from '@jsonjoy.com/json-pack/lib/resp';
+import {RespStreamingDecoder} from '@jsonjoy.com/json-pack/lib/resp/RespStreamingDecoder';
 
 const noop = () => {};
 

@@ -1,6 +1,6 @@
 import {NodeHealth, NodeRole} from './constants';
-import {printTree} from 'json-joy/es2020/util/print/printTree';
-import type {Printable} from 'json-joy/es2020/util/print/types';
+import {printTree} from 'tree-dump/lib/printTree';
+import type {Printable} from 'tree-dump/lib/types';
 import type {RedisClusterShardsResponseNode} from './types';
 import type {RedisCluster} from './RedisCluster';
 

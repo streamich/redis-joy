@@ -1,4 +1,4 @@
-import {bufferToUint8Array} from 'json-joy/es2020/util/buffers/bufferToUint8Array';
+import {bufferToUint8Array} from '@jsonjoy.com/util/lib/buffers/bufferToUint8Array';
 
 export const cmpUint8Array = (a: Uint8Array, b: Uint8Array): 1 | 0 | -1 => {
   const len1 = a.length;

@@ -1,4 +1,4 @@
-import {Defer} from 'thingies/es2020/Defer';
+import {Defer} from 'thingies/lib/Defer';
 import type {Cmd, MultiCmd} from '../types';
 
 export const callNoRes = (args: Cmd | MultiCmd) => {

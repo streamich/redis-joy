@@ -1,9 +1,9 @@
 import * as tls from 'tls';
 import * as net from 'net';
 import {StandaloneClient} from '../standalone';
-import {printTree} from 'json-joy/es2020/util/print/printTree';
+import {printTree} from 'tree-dump/lib/printTree';
 import {ReconnectingSocket} from '../util/ReconnectingSocket';
-import type {Printable} from 'json-joy/es2020/util/print/types';
+import type {Printable} from 'tree-dump/lib/types';
 import type {RedisClientCodecOpts} from '../types';
 import type {RedisClusterShardsResponse} from './types';
 import type {ScriptRegistry} from '../ScriptRegistry';
@@ -84,6 +84,6 @@ export class RedisClusterNodeClient extends StandaloneClient implements Printabl
   // ---------------------------------------------------------------- Printable
 
   public toString(tab?: string): string {
-    return 'client' + printTree(tab, [(tab) => `host: ${this.host}`, (tab) => `port: ${this.port}`]);
+    return 'client' + printTree(tab, [(tab: string) => `host: ${this.host}`, (tab: string) => `port: ${this.port}`]);
   }
 }

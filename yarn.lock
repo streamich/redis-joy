@@ -569,6 +569,34 @@
     "@jridgewell/resolve-uri" "^3.1.0"
     "@jridgewell/sourcemap-codec" "^1.4.14"
 
+"@jsonjoy.com/base64@^1.1.1":
+  version "1.1.2"
+  resolved "https://registry.yarnpkg.com/@jsonjoy.com/base64/-/base64-1.1.2.tgz#cf8ea9dcb849b81c95f14fc0aaa151c6b54d2578"
+  integrity sha512-q6XAnWQDIMA3+FTiOYajoYqySkO+JSat0ytXGSuRdq9uXE7o92gzuQwQM14xaCRlBLGq3v5miDGC4vkVTn54xA==
+
+"@jsonjoy.com/jit-router@^1.0.1":
+  version "1.0.1"
+  resolved "https://registry.yarnpkg.com/@jsonjoy.com/jit-router/-/jit-router-1.0.1.tgz#3f37180e185c7111cf476052f2e2dc98a4c72d85"
+  integrity sha512-kwifZiaBvoKr6g5sf6sN3qYT371ytgmwcKZrfP96r5a2ZAk9m95CW1U0lakpWWo5cQ0HiBe3hffGJAH+Y+fT/g==
+  dependencies:
+    "@jsonjoy.com/util" "^1.1.0"
+    sonic-forest "^1.0.0"
+
+"@jsonjoy.com/json-pack@^1.0.2":
+  version "1.0.4"
+  resolved "https://registry.yarnpkg.com/@jsonjoy.com/json-pack/-/json-pack-1.0.4.tgz#ab59c642a2e5368e8bcfd815d817143d4f3035d0"
+  integrity sha512-aOcSN4MeAtFROysrbqG137b7gaDDSmVrl5mpo6sT/w+kcXpWnzhMjmY/Fh/sDx26NBxyIE7MB1seqLeCAzy9Sg==
+  dependencies:
+    "@jsonjoy.com/base64" "^1.1.1"
+    "@jsonjoy.com/util" "^1.1.2"
+    hyperdyperid "^1.2.0"
+    thingies "^1.20.0"
+
+"@jsonjoy.com/util@^1.1.0", "@jsonjoy.com/util@^1.1.2", "@jsonjoy.com/util@^1.1.3":
+  version "1.1.3"
+  resolved "https://registry.yarnpkg.com/@jsonjoy.com/util/-/util-1.1.3.tgz#75b1c3cf21b70e665789d1ad3eabeff8b7fd1429"
+  integrity sha512-g//kkF4kOwUjemValCtOc/xiYzmwMRmWq3Bn+YnzOzuZLHq2PpMOxxIayN3cKbo7Ko2Np65t6D9H81IvXbXhqg==
+
 "@pkgjs/parseargs@^0.11.0":
   version "0.11.0"
   resolved "https://registry.yarnpkg.com/@pkgjs/parseargs/-/parseargs-0.11.0.tgz#a77ea742fab25775145434eb1d2328cf5013ac33"
@@ -1083,7 +1111,6 @@ commander@^2.12.1:
 
 "commands@https://github.com/streamich/commands#4321d5d40473c48fadf49fd99662032eac9b855b":
   version "0.2.0"
-  uid "4321d5d40473c48fadf49fd99662032eac9b855b"
   resolved "https://github.com/streamich/commands#4321d5d40473c48fadf49fd99662032eac9b855b"
 
 concat-map@0.0.1:
@@ -1938,14 +1965,19 @@ jsesc@^2.5.1:
   resolved "https://registry.yarnpkg.com/jsesc/-/jsesc-2.5.2.tgz#80564d2e483dacf6e8ef209650a67df3f0c283a4"
   integrity sha512-OYu7XEzjkCQ3C5Ps3QIZsQfNpqoJyZZA99wd9aWd05NCtC5pWOkShK2mkL6HXQR6/Cy2lbNdPlZBpuQHXE63gA==
 
-json-joy@^11.25.0:
-  version "11.28.0"
-  resolved "https://registry.yarnpkg.com/json-joy/-/json-joy-11.28.0.tgz#59e4ba7cf91556e49caaf914047dca8bc95c1491"
-  integrity sha512-WTq2tYD2r+0rUFId4gtUjwejV20pArh4q2WRJKxJdwLlPFHyW94HwwB2vUr5lUJTVkehhhWEVLwOUI0MSacNIw==
+json-joy@^16.8.0:
+  version "16.8.0"
+  resolved "https://registry.yarnpkg.com/json-joy/-/json-joy-16.8.0.tgz#cde8061b467ca976498532de5faa1dc10f4ed0c8"
+  integrity sha512-QxWLLCq8uh4HWPL8Xp7dithSyn8B7k3WAptzmpGNrbm6gtQej+rNNHn9Q+PHToLupcDBo5tm7TpSkmaglbpYoA==
   dependencies:
+    "@jsonjoy.com/base64" "^1.1.1"
+    "@jsonjoy.com/json-pack" "^1.0.2"
+    "@jsonjoy.com/util" "^1.1.0"
     arg "^5.0.2"
     hyperdyperid "^1.2.0"
-    thingies "^1.14.1"
+    sonic-forest "^1.0.2"
+    thingies "^2.0.0"
+    tree-dump "^1.0.1"
 
 json-parse-even-better-errors@^2.3.0:
   version "2.3.1"
@@ -2402,6 +2434,13 @@ slash@^3.0.0:
   resolved "https://registry.yarnpkg.com/slash/-/slash-3.0.0.tgz#6539be870c165adbd5240220dbe361f1bc4d4634"
   integrity sha512-g9Q1haeby36OSStwb4ntCGGGaKsaVSjQ68fBxoQcutl5fS1vuY18H3wSt3jFyFtrkx+Kz0V1G85A4MyAdDMi2Q==
 
+sonic-forest@^1.0.0, sonic-forest@^1.0.2, sonic-forest@^1.0.3:
+  version "1.0.3"
+  resolved "https://registry.yarnpkg.com/sonic-forest/-/sonic-forest-1.0.3.tgz#81363af60017daba39b794fce24627dc412563cb"
+  integrity sha512-dtwajos6IWMEWXdEbW1IkEkyL2gztCAgDplRIX+OT5aRKnEd5e7r7YCxRgXZdhRP1FBdOBf8axeTPhzDv8T4wQ==
+  dependencies:
+    tree-dump "^1.0.0"
+
 source-map-support@0.5.13:
   version "0.5.13"
   resolved "https://registry.yarnpkg.com/source-map-support/-/source-map-support-0.5.13.tgz#31b24a9c2e73c2de85066c0feb7d44767ed52932"
@@ -2522,10 +2561,15 @@ test-exclude@^6.0.0:
     glob "^7.1.4"
     minimatch "^3.0.4"
 
-thingies@^1.14.1, thingies@^1.16.0:
-  version "1.16.0"
-  resolved "https://registry.yarnpkg.com/thingies/-/thingies-1.16.0.tgz#968cde87fbf0fdd69a1a3a8e9678324f634e5053"
-  integrity sha512-J23AVs11hSQxuJxvfQyMIaS9z1QpDxOCvMkL3ZxZl8/jmkgmnNGWrlyNxVz6Jbh0U6DuGmHqq6f7zUROfg/ncg==
+thingies@^1.20.0:
+  version "1.21.0"
+  resolved "https://registry.yarnpkg.com/thingies/-/thingies-1.21.0.tgz#e80fbe58fd6fdaaab8fad9b67bd0a5c943c445c1"
+  integrity sha512-hsqsJsFMsV+aD4s3CWKk85ep/3I9XzYV/IXaSouJMYIoDlgyi11cBhsqYe9/geRfB0YIikBQg6raRaM+nIMP9g==
+
+thingies@^2.0.0, thingies@^2.1.0:
+  version "2.1.0"
+  resolved "https://registry.yarnpkg.com/thingies/-/thingies-2.1.0.tgz#e0f771d5bc42e147fe9518be48f667319e748e25"
+  integrity sha512-SASxQdAtapX03qTa1V/kt9UGhQLUoP54luRasJxZoleeAL+PSQsBlIAGNxj1FoayglyCGUhxByFgSn7dh2JFog==
 
 tmpl@1.0.5:
   version "1.0.5"
@@ -2543,6 +2587,11 @@ to-regex-range@^5.0.1:
   integrity sha512-65P7iz6X5yEr1cwcgvQxbbIw7Uk3gOy5dIdtZ4rDveLqhrdJP+Li/Hx6tyK0NEb+2GCyneCMJiGqrADCSNk8sQ==
   dependencies:
     is-number "^7.0.0"
+
+tree-dump@^1.0.0, tree-dump@^1.0.1:
+  version "1.0.1"
+  resolved "https://registry.yarnpkg.com/tree-dump/-/tree-dump-1.0.1.tgz#b448758da7495580e6b7830d6b7834fca4c45b96"
+  integrity sha512-WCkcRBVPSlHHq1dc/px9iOfqklvzCbdRwvlNfxGZsrHqf6aZttfPrd7DJTt6oR10dwUfpFFQeVTkPbBIZxX/YA==
 
 ts-jest@^29.1.1:
   version "29.1.1"

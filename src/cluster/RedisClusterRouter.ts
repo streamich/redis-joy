@@ -1,10 +1,10 @@
-import {AvlMap} from 'json-joy/es2020/util/trees/avl/AvlMap';
+import {AvlMap} from 'sonic-forest/lib/avl/AvlMap';
 import {RedisClusterSlotRange} from './RedisClusterSlotRange';
 import {RedisClusterNode} from './RedisClusterNode';
 import {NodeHealth, NodeRole} from './constants';
-import {xorShift32} from 'thingies/es2020/xorshift';
-import {printTree} from 'json-joy/es2020/util/print/printTree';
-import type {Printable} from 'json-joy/es2020/util/print/types';
+import {xorShift32} from 'thingies/lib/xorshift';
+import {printTree} from 'tree-dump/lib/printTree';
+import type {Printable} from 'tree-dump/lib/types';
 import type {RedisCluster} from './RedisCluster';
 import type {RedisClusterNodeClient} from './RedisClusterNodeClient';
 
