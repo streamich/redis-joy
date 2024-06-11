@@ -14,14 +14,19 @@ import {printTree} from 'json-joy/es2020/util/print/printTree';
 import {getSlotAny} from '../util/slots';
 import {isMultiCmd} from '../util/commands';
 import {ScriptRegistry} from '../ScriptRegistry';
-import {ascii} from '../util/buf';
+import {cmpUint8Array, ascii} from '../util/buf';
+import {isNoscriptError} from '../standalone/errors';
+import {AvlMap} from 'json-joy/es2020/util/trees/avl/AvlMap';
+import {bufferToUint8Array} from 'json-joy/es2020/util/buffers/bufferToUint8Array';
 import type {Printable} from 'json-joy/es2020/util/print/types';
 import type {CmdOpts} from '../standalone';
-import {isNoscriptError} from '../standalone/errors';
 
 const EVALSHA = ascii`EVALSHA`;
 const SCRIPT = ascii`SCRIPT`;
 const LOAD = ascii`LOAD`;
+const SSUBSCRIBE = ascii`SSUBSCRIBE`;
+const SPUBLISH = ascii`SPUBLISH`;
+const SUNSUBSCRIBE = ascii`SUNSUBSCRIBE`;
 
 export interface RedisClusterOpts extends RedisClientCodecOpts {
   /**
@@ -268,7 +273,7 @@ export class RedisCluster implements Printable {
     return client;
   }
 
-  public async getClientForKey(key: string, write: boolean): Promise<RedisClusterNodeClient> {
+  public async getClientForKey(key: string | Uint8Array, write: boolean): Promise<RedisClusterNodeClient> {
     if (!key) return await this.getAnyClientOrSeedClient();
     const slot = getSlotAny(key);
     await this.whenRouterReady();
@@ -278,7 +283,7 @@ export class RedisCluster implements Printable {
     return await this.getAnyClientOrSeedClient();
   }
 
-  public async getMasterClientForKey(key: string): Promise<RedisClusterNodeClient> {
+  public async getMasterClientForKey(key: string | Uint8Array): Promise<RedisClusterNodeClient> {
     if (!this._routerReady) await this.whenRouterReady();
     const router = this.router;
     const slot = getSlotAny(key);
@@ -337,6 +342,7 @@ export class RedisCluster implements Printable {
       if (typeof cmd !== 'string' || !cmd) throw new Error('INVALID_COMMAND');
       cmd = cmd.toUpperCase();
       isWrite = commands.write.has(cmd);
+      // FIXME: handle case when `args[1]` is Uint8Array or Buffer.
       if (!key) key = (args.length > 1 ? args[1] + '' : '') || '';
     }
     if (!call.client) {
@@ -395,6 +401,39 @@ export class RedisCluster implements Printable {
       ]);
       return result;
     }
+  }
+
+  // ------------------------------------------------------------------ Pub/sub
+
+  public readonly ssubs = new AvlMap<Uint8Array, FanOut<Uint8Array>>(cmpUint8Array);
+
+  public async ssubscribe(channel: Uint8Array | string, listener: (message: Uint8Array) => void): Promise<() => void> {
+    // TODO: Remove bufferToUint8Array?
+    const channelBuf = typeof channel === 'string' ? bufferToUint8Array(Buffer.from(channel)) : channel;
+    let fanout = this.ssubs.get(channelBuf);
+    // TODO: Need to keep a client reference here ...
+    if (!fanout) {
+      await this.cmd([SSUBSCRIBE, channelBuf]);
+      fanout = new FanOut<Uint8Array>();
+      this.ssubs.set(channelBuf, fanout);
+    }
+    const unsubscribe = fanout.listen(listener);
+    return () => {
+      unsubscribe();
+      if (fanout!.listeners.size === 0) {
+        this.ssubs.del(channelBuf);
+        this.cmd([SUNSUBSCRIBE, channelBuf]);
+        // this.cmdFnF([SUNSUBSCRIBE, channelBuf]);
+      }
+    };
+  }
+
+  public async spublish(channel: Uint8Array | string, message: Uint8Array | string): Promise<number> {
+    return (await this.cmd([SPUBLISH, channel, message])) as number;
+  }
+
+  public async sunsubscribe(channel: Uint8Array | string): Promise<void> {
+
   }
 
   // ---------------------------------------------------------------- Printable
