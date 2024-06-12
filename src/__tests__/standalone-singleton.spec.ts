@@ -3,8 +3,8 @@ import {StandaloneClient} from '../standalone/StandaloneClient';
 import {ClusterTestSetup} from './types';
 import * as commands from './commands';
 import {ReconnectingSocket} from '../util/ReconnectingSocket';
-import {RespEncoder} from 'json-joy/es2020/json-pack/resp/RespEncoder';
-import {RespStreamingDecoder} from 'json-joy/es2020/json-pack/resp/RespStreamingDecoder';
+import {RespEncoder} from '@jsonjoy.com/json-pack/lib/resp/RespEncoder';
+import {RespStreamingDecoder} from '@jsonjoy.com/json-pack/lib/resp/RespStreamingDecoder';
 import * as config from './config';
 
 const host = config.standalone.host;

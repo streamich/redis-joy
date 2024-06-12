@@ -1,8 +1,8 @@
 import * as net from 'net';
 import {StandaloneClient} from '../standalone/StandaloneClient';
 import {StandaloneTestSetup} from './types';
-import {RespEncoder} from 'json-joy/es2020/json-pack/resp/RespEncoder';
-import {RespStreamingDecoder} from 'json-joy/es2020/json-pack/resp/RespStreamingDecoder';
+import {RespEncoder} from '@jsonjoy.com/json-pack/lib/resp/RespEncoder';
+import {RespStreamingDecoder} from '@jsonjoy.com/json-pack/lib/resp/RespStreamingDecoder';
 import {ReconnectingSocket} from '../util/ReconnectingSocket';
 import * as config from './config';
 

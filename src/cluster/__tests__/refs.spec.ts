@@ -1,5 +1,5 @@
 import {RedisCluster} from '../RedisCluster';
-import {tick} from 'thingies/es2020/tick';
+import {tick} from 'thingies/lib/tick';
 import {ScriptRegistry} from '../../ScriptRegistry';
 
 const setup = () => {
