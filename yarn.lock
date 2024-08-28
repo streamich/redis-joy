@@ -2550,10 +2550,15 @@ test-exclude@^6.0.0:
     glob "^7.1.4"
     minimatch "^3.0.4"
 
-thingies@^1.16.0, thingies@^1.20.0:
+thingies@^1.20.0:
   version "1.21.0"
   resolved "https://registry.yarnpkg.com/thingies/-/thingies-1.21.0.tgz#e80fbe58fd6fdaaab8fad9b67bd0a5c943c445c1"
   integrity sha512-hsqsJsFMsV+aD4s3CWKk85ep/3I9XzYV/IXaSouJMYIoDlgyi11cBhsqYe9/geRfB0YIikBQg6raRaM+nIMP9g==
+
+thingies@^2.0.0:
+  version "2.1.0"
+  resolved "https://registry.yarnpkg.com/thingies/-/thingies-2.1.0.tgz#e0f771d5bc42e147fe9518be48f667319e748e25"
+  integrity sha512-SASxQdAtapX03qTa1V/kt9UGhQLUoP54luRasJxZoleeAL+PSQsBlIAGNxj1FoayglyCGUhxByFgSn7dh2JFog==
 
 tmpl@1.0.5:
   version "1.0.5"
