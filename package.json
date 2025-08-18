@@ -43,7 +43,7 @@
     "tslib": "2"
   },
   "dependencies": {
-    "json-joy": "^11.25.0",
+    "json-joy": "^17.0.0",
     "thingies": "^1.16.0"
   },
   "devDependencies": {
